@@ -329,7 +329,7 @@ def calculate_ring(data):
 
     poster_data = {
         "title": "Каблучка індивідуального дизайну",
-        "gold": "",
+        "gold": "Біле родоване золото 585 проби",
         "sizes": f"{size:g}",
         "width": f"{width:g} мм",
         "coating": coating_client,
@@ -362,7 +362,7 @@ def poster_html(uploaded_file, poster_data):
     image_data_url = prepare_product_image_data_url(uploaded_file)
     data = {
         "title": html.escape(poster_data.get("title", "")),
-        "gold": html.escape(poster_data.get("gold", "")),
+        "gold": html.escape(poster_data.get("gold", "Біле родоване золото 585 проби")),
         "sizes": html.escape(poster_data.get("sizes", "")),
         "width_text": html.escape(poster_data.get("width", "")),
         "coating": html.escape(poster_data.get("coating", "")),
@@ -408,7 +408,6 @@ body {{ margin:0; padding:18px; background:#121212; font-family: Georgia, 'Times
 <div id="poster">
   <div class="top-brand">LANA &amp; LONA</div>
   <div class="poster-title">{title}</div>
-  <div class="poster-gold">{gold}</div>
   <div class="image-zone"><div class="image-glow"></div><img class="product-photo" src="{image_data_url}" /></div>
   <div class="specs"><div class="spec-row">
     <div><div class="spec-label">Золото</div><div class="spec-value">585 проба</div></div>
