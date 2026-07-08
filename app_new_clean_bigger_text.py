@@ -614,12 +614,12 @@ elif st.session_state.screen == "ring":
             st.session_state.client_text = client_text
             st.session_state.poster_data = poster_data
 
-        st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
-        st.subheader("📋 Текст для клієнта")
-        client_script = st.session_state.get("client_text", "")
+        #st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
+       # st.subheader("📋 Текст для клієнта")
+       # client_script = st.session_state.get("client_text", "")
        # st.text_area("Скрипт для клієнта", value=client_script, height=260)
-        #st.code(client_script, language=None)
-        st.caption("Текст виводиться окремо від картинки. У блоці з кодом є кнопка Copy у правому верхньому куті.")
+       # st.code(client_script, language=None)
+       # st.caption("Текст виводиться окремо від картинки. У блоці з кодом є кнопка Copy у правому верхньому куті.")
         st.subheader("🖼️ Картинка для клієнта")
         uploaded_product_image = st.file_uploader("Завантаж фото виробу", type=["jpg", "jpeg", "png"], key="ring_product_image")
         if st.session_state.get("poster_data"):
