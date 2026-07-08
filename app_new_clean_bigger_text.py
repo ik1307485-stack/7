@@ -329,7 +329,7 @@ def calculate_ring(data):
 
     poster_data = {
         "title": "Каблучка індивідуального дизайну",
-        "gold": "Біле родоване золото 585 проби",
+        "gold": "",
         "sizes": f"{size:g}",
         "width": f"{width:g} мм",
         "coating": coating_client,
