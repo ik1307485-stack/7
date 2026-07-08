@@ -388,6 +388,7 @@ body {{ margin:0; padding:18px; background:#121212; font-family: Georgia, 'Times
 #poster:before {{ content:""; position:absolute; inset:32px; border:1px solid rgba(202,144,101,.11); pointer-events:none; }}
 .top-brand {{ position:relative; z-index:2; text-align:center; font-size:11px; letter-spacing:6px; font-weight:300; color:rgba(255,255,255,.34); margin-bottom:28px; }}
 .poster-title {{ position:relative; z-index:2; text-align:center; color:#d09768; font-size:28px; line-height:1.24; font-weight:300; letter-spacing:4.8px; text-transform:uppercase; max-width:740px; margin:0 auto; }}
+.poster-gold {{ position:relative; z-index:2; text-align:center; margin-top:12px; font-size:13px; line-height:1.4; font-weight:300; letter-spacing:2.2px; color:rgba(255,255,255,.55); text-transform:uppercase; }}
 .image-zone {{ position:relative; height:705px; display:flex; align-items:center; justify-content:center; }}
 .image-glow {{ position:absolute; width:790px; height:330px; border-radius:50%; background:radial-gradient(ellipse at center, rgba(255,255,255,.12), rgba(210,145,96,.07) 38%, transparent 72%); filter:blur(32px); }}
 .product-photo {{ position:relative; z-index:2; max-width:860px; max-height:690px; object-fit:contain; filter:drop-shadow(0 34px 42px rgba(0,0,0,.78)); }}
@@ -407,6 +408,7 @@ body {{ margin:0; padding:18px; background:#121212; font-family: Georgia, 'Times
 <div id="poster">
   <div class="top-brand">LANA &amp; LONA</div>
   <div class="poster-title">{title}</div>
+  <div class="poster-gold">{gold}</div>
   <div class="image-zone"><div class="image-glow"></div><img class="product-photo" src="{image_data_url}" /></div>
   <div class="specs"><div class="spec-row">
     <div><div class="spec-label">Золото</div><div class="spec-value">585 проба</div></div>
@@ -553,8 +555,10 @@ elif st.session_state.screen == "wedding":
             st.session_state.client_text = client_text
             st.session_state.poster_data = poster_data
 
-        
-        st.caption("Текст виводиться окремо від картинки. У блоці з кодом є кнопка Copy у правому верхньому куті.")
+        st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
+        st.subheader("📋 Текст для клієнта")
+        st.code(st.session_state.get("client_text", ""), language=None)
+        st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
         st.subheader("🖼️ Картинка для клієнта")
         uploaded_product_image = st.file_uploader("Завантаж фото виробу", type=["jpg", "jpeg", "png"], key="wedding_product_image")
         if st.session_state.get("poster_data"):
@@ -612,10 +616,8 @@ elif st.session_state.screen == "ring":
 
         st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
         st.subheader("📋 Текст для клієнта")
-        client_script = st.session_state.get("client_text", "")
-        st.text_area("Скрипт для клієнта", value=client_script, height=260)
-        st.code(client_script, language=None)
-        st.caption("Текст виводиться окремо від картинки. У блоці з кодом є кнопка Copy у правому верхньому куті.")
+        st.code(st.session_state.get("client_text", ""), language=None)
+        st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
         st.subheader("🖼️ Картинка для клієнта")
         uploaded_product_image = st.file_uploader("Завантаж фото виробу", type=["jpg", "jpeg", "png"], key="ring_product_image")
         if st.session_state.get("poster_data"):
