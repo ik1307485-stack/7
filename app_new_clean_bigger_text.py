@@ -362,7 +362,7 @@ def poster_html(uploaded_file, poster_data):
     image_data_url = prepare_product_image_data_url(uploaded_file)
     data = {
         "title": html.escape(poster_data.get("title", "")),
-        "gold": html.escape(poster_data.get("gold", "Біле родоване золото 585 проби")),
+        "gold": html.escape(poster_data.get("gold", "")),
         "sizes": html.escape(poster_data.get("sizes", "")),
         "width_text": html.escape(poster_data.get("width", "")),
         "coating": html.escape(poster_data.get("coating", "")),
