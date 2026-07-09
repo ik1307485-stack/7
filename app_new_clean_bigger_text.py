@@ -7,7 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 
-GOLD_PRICE = 4600
+GOLD_PRICE = 4500
 WORK_VYSHYVANKA = 3100
 WORK_INDIVIDUAL = 3000
 WORK_RING = 6100
