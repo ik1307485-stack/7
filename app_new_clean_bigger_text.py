@@ -1,11 +1,5 @@
-import base64
-import html
-import io
-
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
-from PIL import Image
 
 GOLD_PRICE = 4500
 WORK_VYSHYVANKA = 3100
@@ -374,111 +368,6 @@ def calculate_ring(data):
     return technical_text, client_text, poster_data
 
 
-def prepare_product_image_data_url(uploaded_file):
-    if uploaded_file is None:
-        return ""
-    uploaded_file.seek(0)
-    img = Image.open(uploaded_file).convert("RGBA")
-    img.thumbnail((980, 760), Image.LANCZOS)
-    pixels = img.load()
-    img_w, img_h = img.size
-    for y in range(img_h):
-        for x in range(img_w):
-            r, g, b, a = pixels[x, y]
-            if r > 235 and g > 235 and b > 235:
-                pixels[x, y] = (255, 255, 255, 0)
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return "data:image/png;base64," + encoded
-
-
-def poster_html(uploaded_file, poster_data):
-    image_data_url = prepare_product_image_data_url(uploaded_file)
-    data = {
-        "title": html.escape(poster_data.get("title", "")),
-        "gold": html.escape(poster_data.get("gold", "Біле родоване золото 585 проби")),
-        "sizes": html.escape(poster_data.get("sizes", "")),
-        "width_text": html.escape(poster_data.get("width", "")),
-        "coating": html.escape(poster_data.get("coating", "")),
-        "weight": html.escape(poster_data.get("weight", "")),
-        "price": html.escape(poster_data.get("price", "")),
-        "image_data_url": image_data_url,
-    }
-    return """
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-<meta charset="UTF-8" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<style>
-* {{ box-sizing:border-box; }}
-body {{ margin:0; padding:18px; background:#121212; font-family: Georgia, 'Times New Roman', serif; color:#eee; }}
-.wrap {{ width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }}
-#poster {{
-    width:900px; height:1125px; position:relative; overflow:hidden;
-    background: radial-gradient(circle at 50% 46%, rgba(255,255,255,.07), transparent 38%), linear-gradient(180deg,#030303 0%,#090909 60%,#010101 100%);
-    padding:58px 76px 36px;
-}}
-#poster:before {{ content:""; position:absolute; inset:32px; border:1px solid rgba(202,144,101,.11); pointer-events:none; }}
-.top-brand {{ position:relative; z-index:2; text-align:center; font-size:11px; letter-spacing:6px; font-weight:300; color:rgba(255,255,255,.34); margin-bottom:28px; }}
-.poster-title {{ position:relative; z-index:2; text-align:center; color:#d09768; font-size:28px; line-height:1.24; font-weight:300; letter-spacing:4.8px; text-transform:uppercase; max-width:740px; margin:0 auto; }}
-.poster-gold {{ position:relative; z-index:2; text-align:center; margin-top:12px; font-size:13px; line-height:1.4; font-weight:300; letter-spacing:2.2px; color:rgba(255,255,255,.55); text-transform:uppercase; }}
-.image-zone {{ position:relative; height:705px; display:flex; align-items:center; justify-content:center; }}
-.image-glow {{ position:absolute; width:790px; height:330px; border-radius:50%; background:radial-gradient(ellipse at center, rgba(255,255,255,.12), rgba(210,145,96,.07) 38%, transparent 72%); filter:blur(32px); }}
-.product-photo {{ position:relative; z-index:2; max-width:860px; max-height:690px; object-fit:contain; filter:drop-shadow(0 34px 42px rgba(0,0,0,.78)); }}
-.specs {{ position:relative; z-index:2; border-top:1px solid rgba(201,139,96,.26); padding-top:20px; }}
-.spec-row {{ display:grid; grid-template-columns:repeat(5,1fr); column-gap:10px; text-align:center; }}
-.spec-label {{ font-size:10px; letter-spacing:3.2px; font-weight:300; text-transform:uppercase; color:rgba(201,139,96,.72); margin-bottom:7px; }}
-.spec-value {{ font-size:15px; line-height:1.35; font-weight:300; letter-spacing:.8px; color:rgba(255,255,255,.88); }}
-.price-caption {{ position:relative; z-index:2; text-align:center; margin-top:26px; font-size:12px; letter-spacing:4px; font-weight:300; text-transform:uppercase; color:rgba(201,139,96,.68); }}
-.price {{ position:relative; z-index:2; text-align:center; margin-top:10px; color:#d09768; font-size:36px; line-height:1; font-weight:300; letter-spacing:2px; }}
-.bottom-brand {{ position:absolute; bottom:22px; left:0; right:0; text-align:center; font-size:10px; letter-spacing:6px; font-weight:300; color:rgba(255,255,255,.26); }}
-.download {{ width:900px; border:0; border-radius:10px; padding:14px 18px; background:#d09768; color:#111; font-size:15px; font-weight:600; cursor:pointer; }}
-.hint {{ width:900px; text-align:center; color:#888; font-family:Arial,sans-serif; font-size:12px; }}
-</style>
-</head>
-<body>
-<div class="wrap">
-<div id="poster">
-  <div class="top-brand">LANA &amp; LONA</div>
-  <div class="poster-title">{title}</div>
-  <div class="image-zone"><div class="image-glow"></div><img class="product-photo" src="{image_data_url}" /></div>
-  <div class="specs"><div class="spec-row">
-    <div><div class="spec-label">Золото</div><div class="spec-value">{gold}</div></div>
-    <div><div class="spec-label">Розміри</div><div class="spec-value">{sizes}</div></div>
-    <div><div class="spec-label">Ширина</div><div class="spec-value">{width_text}</div></div>
-    <div><div class="spec-label">Покриття</div><div class="spec-value">{coating}</div></div>
-    <div><div class="spec-label">Вага</div><div class="spec-value">{weight}</div></div>
-  </div></div>
-  <div class="price-caption">Середня вартість</div>
-  <div class="price">{price} грн</div>
-  <div class="bottom-brand">LANA &amp; LONA</div>
-</div>
-<button class="download" onclick="downloadPoster()">Завантажити PNG</button>
-<div class="hint">Після завантаження фото натисни кнопку, щоб зберегти картинку.</div>
-</div>
-<script>
-async function downloadPoster() {{
- const poster = document.getElementById('poster');
- const canvas = await html2canvas(poster, {{backgroundColor:null, scale:2, useCORS:true}});
- const link = document.createElement('a');
- link.download = 'lana_lona_offer.png';
- link.href = canvas.toDataURL('image/png');
- link.click();
-}}
-</script>
-</body>
-</html>
-""".format(**data)
-
-
-def render_poster_block(uploaded_file, poster_data):
-    if uploaded_file is None:
-        st.info("Завантаж фото виробу, щоб створити картинку для клієнта.")
-        return
-    components.html(poster_html(uploaded_file, poster_data), height=1280, scrolling=True)
-
 
 st.set_page_config(page_title="Калькулятор Lana & Lona", layout="wide")
 
@@ -562,7 +451,6 @@ elif st.session_state.screen == "wedding":
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
-            st.session_state.poster_data = poster_data
 
         st.subheader("📊 Технічний розрахунок")
         st.caption("Тут менеджер може виправити вагу вручну і перерахувати ціну.")
@@ -588,16 +476,11 @@ elif st.session_state.screen == "wedding":
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
-            st.session_state.poster_data = poster_data
 
         st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
         st.subheader("📋 Текст для клієнта")
         st.code(st.session_state.get("client_text", ""), language=None)
         st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
-        st.subheader("🖼️ Картинка для клієнта")
-        uploaded_product_image = st.file_uploader("Завантаж фото виробу", type=["jpg", "jpeg", "png"], key="wedding_product_image")
-        if st.session_state.get("poster_data"):
-            render_poster_block(uploaded_product_image, st.session_state.poster_data)
 
 elif st.session_state.screen == "ring":
     st.button("← Назад", on_click=go_start)
@@ -634,7 +517,6 @@ elif st.session_state.screen == "ring":
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
-            st.session_state.poster_data = poster_data
 
         st.subheader("📊 Технічний розрахунок")
         st.caption("Тут менеджер може виправити вагу вручну і перерахувати ціну.")
@@ -648,13 +530,8 @@ elif st.session_state.screen == "ring":
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
-            st.session_state.poster_data = poster_data
 
         st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
         st.subheader("📋 Текст для клієнта")
         st.code(st.session_state.get("client_text", ""), language=None)
         st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
-        st.subheader("🖼️ Картинка для клієнта")
-        uploaded_product_image = st.file_uploader("Завантаж фото виробу", type=["jpg", "jpeg", "png"], key="ring_product_image")
-        if st.session_state.get("poster_data"):
-            render_poster_block(uploaded_product_image, st.session_state.poster_data)
