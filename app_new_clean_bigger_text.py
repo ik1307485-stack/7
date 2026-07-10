@@ -14,6 +14,23 @@ WORK_RING = 6100
 PACKAGING = 3000
 K = 13
 
+GOLD_TYPES = ["Червоне", "Лимонне", "Біле", "Рожеве"]
+COATING_OPTIONS = {
+    "Без покриття": 0,
+    "Родій 50$": 50,
+    "Родій 100$": 100,
+    "Рутеній 50$": 50,
+    "Рутеній 100$": 100,
+    "Емаль 100$": 100,
+    "Емаль 200$": 200,
+}
+
+
+def get_coating_name(coating_option):
+    if coating_option == "Без покриття":
+        return "Без покриття"
+    return coating_option.replace(" 50$", "").replace(" 100$", "").replace(" 200$", "")
+
 STONE_PRICES_USD = {
     "Натуральні діаманти": {"1 мм": 9, "1.25 мм": 15, "1.5 мм": 24, "1.75 мм": 42, "2 мм": 55, "2.5 мм": 100, "3 мм": 220, "3.5 мм": 380, "4 мм": 800},
     "Лабораторні діаманти": {"1 мм": 7, "1.25 мм": 10, "1.5 мм": 15, "1.75 мм": 30, "2 мм": 30, "2.5 мм": 60, "3 мм": 140, "3.5 мм": 210, "4 мм": 390},
@@ -87,7 +104,10 @@ def calculate_wedding_rings(data):
     thickness_2 = data["thickness_2"] if use_second_ring else 0
 
     design = data["design"]
-    coating_usd = data["coating_usd"]
+    gold_type = data.get("gold_type", "Біле")
+    coating_option = data.get("coating_option", "Без покриття")
+    coating_usd = COATING_OPTIONS.get(coating_option, 0)
+    coating_name = get_coating_name(coating_option)
     coating_uah = coating_usd * usd_rate
     engraving = data["engraving"]
     delivery = data["delivery"]
@@ -126,7 +146,7 @@ def calculate_wedding_rings(data):
     total = base_total_without_stones + stones_uah
 
     title = "Індивідуальна модель обручок «Вишиванка» ⚜️" if design == "Вишиванка" else "Індивідуальна модель обручок ⚜️"
-    coating_client = "Без покриття" if coating_usd == 0 else "Родій"
+    coating_client = coating_name
     inserts_text = f"{ring_stone_size} - {ring_stone_qty} шт" if ring_stone_qty > 0 else "не додано"
 
     second_weight_text = f"\n{weight_note_2}:\n{weight_2:.2f} г\n" if use_second_ring else ""
@@ -141,6 +161,12 @@ def calculate_wedding_rings(data):
 
 Тип виробу:
 Пара обручок
+
+Тип золота:
+{gold_type} золото 585 проби
+
+Покриття вибране:
+{coating_option}
 
 {weight_note_1}:
 {weight_1:.2f} г
@@ -182,7 +208,7 @@ def calculate_wedding_rings(data):
 
     client_text = f"""{title}
 
-Біле родоване золото 585 проби 💍
+{gold_type} золото 585 проби 💍
 {client_sizes_text}
 {client_width_text}
 Покриття: {coating_client}
@@ -214,7 +240,7 @@ def calculate_wedding_rings(data):
 
     poster_data = {
         "title": title.replace("⚜️", "").strip(),
-        "gold": "Біле родоване золото 585 проби",
+        "gold": f"{gold_type} золото 585 проби",
         "sizes": client_sizes_text.replace("Розміри: ", "").replace("Розмір: ", ""),
         "width": client_width_text.replace("Ширина: ", ""),
         "coating": coating_client,
@@ -230,7 +256,10 @@ def calculate_ring(data):
     size = data["size"]
     width = data["width"]
     thickness = data["thickness"]
-    coating_usd = data["coating_usd"]
+    gold_type = data.get("gold_type", "Біле")
+    coating_option = data.get("coating_option", "Без покриття")
+    coating_usd = COATING_OPTIONS.get(coating_option, 0)
+    coating_name = get_coating_name(coating_option)
     coating_uah = coating_usd * usd_rate
     engraving = data["engraving"]
     delivery = data["delivery"]
@@ -257,13 +286,19 @@ def calculate_ring(data):
     stones_uah = main_uah + small_uah
     total = base_total_without_stones + stones_uah
 
-    coating_client = "Без покриття" if coating_usd == 0 else "Родій"
+    coating_client = coating_name
     inserts_text = make_inserts_text(main_size, main_qty, small_size, small_qty)
 
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
 
 Тип виробу:
 Каблучка
+
+Тип золота:
+{gold_type} золото 585 проби
+
+Покриття вибране:
+{coating_option}
 
 {weight_note}:
 {total_weight:.2f} г
@@ -311,7 +346,7 @@ def calculate_ring(data):
 
     client_text = f"""Каблучка індивідуального дизайну ⚜️
 
-Біле родоване золото 585 проби 💍
+{gold_type} золото 585 проби 💍
 Розмір: {size:g}
 Ширина: {width:g} мм
 Покриття: {coating_client}
@@ -329,7 +364,7 @@ def calculate_ring(data):
 
     poster_data = {
         "title": "Каблучка індивідуального дизайну",
-        "gold": "Біле родоване золото 585 проби",
+        "gold": f"{gold_type} золото 585 проби",
         "sizes": f"{size:g}",
         "width": f"{width:g} мм",
         "coating": coating_client,
@@ -410,7 +445,7 @@ body {{ margin:0; padding:18px; background:#121212; font-family: Georgia, 'Times
   <div class="poster-title">{title}</div>
   <div class="image-zone"><div class="image-glow"></div><img class="product-photo" src="{image_data_url}" /></div>
   <div class="specs"><div class="spec-row">
-    <div><div class="spec-label">Золото</div><div class="spec-value">585 проба</div></div>
+    <div><div class="spec-label">Золото</div><div class="spec-value">{gold}</div></div>
     <div><div class="spec-label">Розміри</div><div class="spec-value">{sizes}</div></div>
     <div><div class="spec-label">Ширина</div><div class="spec-value">{width_text}</div></div>
     <div><div class="spec-label">Покриття</div><div class="spec-value">{coating}</div></div>
@@ -486,6 +521,7 @@ elif st.session_state.screen == "wedding":
     with left:
         st.subheader("Дані для прорахунку")
         design = st.selectbox("Дизайн", ["Вишиванка", "Індивідуальний"])
+        gold_type = st.selectbox("Тип золота", GOLD_TYPES, index=2, key="wedding_gold_type")
         st.markdown("### Обручка 1")
         size_1 = st.number_input("Розмір 1", min_value=1.0, value=16.0, step=0.5)
         width_1 = st.number_input("Ширина 1, мм", min_value=0.1, value=5.0, step=0.1)
@@ -506,7 +542,7 @@ elif st.session_state.screen == "wedding":
         ring_stone_qty = st.number_input("Кількість діамантів", min_value=0, value=0, step=1, disabled=not ring_stone_enabled)
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
-        coating_usd = st.selectbox("Покриття, $", [0, 50, 100, 200])
+        coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
         calculate_btn = st.button("РОЗРАХУВАТИ", use_container_width=True)
@@ -518,10 +554,10 @@ elif st.session_state.screen == "wedding":
             st.session_state.wedding_manual_weight_1 = 0.0
             st.session_state.wedding_manual_weight_2 = 0.0
             technical_text, client_text, poster_data = calculate_wedding_rings({
-                "design": design, "use_second_ring": use_second_ring,
+                "design": design, "gold_type": gold_type, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
-                "discount_percent": discount_percent, "coating_usd": coating_usd, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
             })
             st.session_state.technical_text = technical_text
@@ -544,10 +580,10 @@ elif st.session_state.screen == "wedding":
             st.session_state.wedding_manual_weight_1 = manual_weight_1_right
             st.session_state.wedding_manual_weight_2 = manual_weight_2_right
             technical_text, client_text, poster_data = calculate_wedding_rings({
-                "design": design, "use_second_ring": use_second_ring,
+                "design": design, "gold_type": gold_type, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
-                "discount_percent": discount_percent, "coating_usd": coating_usd, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
             })
             st.session_state.technical_text = technical_text
@@ -570,6 +606,7 @@ elif st.session_state.screen == "ring":
     with left:
         st.subheader("Дані для прорахунку")
         st.info("Для каблучки робота завжди рахується по 6100 грн/г. Дизайн тут не вибирається.")
+        gold_type = st.selectbox("Тип золота", GOLD_TYPES, index=2, key="ring_gold_type")
         size = st.number_input("Розмір", min_value=1.0, value=16.0, step=0.5)
         width = st.number_input("Ширина, мм", min_value=0.1, value=2.5, step=0.1)
         thickness = st.number_input("Товщина, мм", min_value=0.1, value=1.2, step=0.1)
@@ -581,7 +618,7 @@ elif st.session_state.screen == "ring":
         small_qty = st.number_input("Малі діаманти — к-сть", min_value=0, value=0, step=1)
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
-        coating_usd = st.selectbox("Покриття, $", [0, 50, 100, 200])
+        coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
         calculate_btn = st.button("РОЗРАХУВАТИ", use_container_width=True)
@@ -591,9 +628,9 @@ elif st.session_state.screen == "ring":
         if calculate_btn:
             st.session_state.ring_manual_weight = 0.0
             technical_text, client_text, poster_data = calculate_ring({
-                "size": size, "width": width, "thickness": thickness, "manual_weight": 0.0,
+                "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
-                "discount_percent": discount_percent, "coating_usd": coating_usd, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -605,9 +642,9 @@ elif st.session_state.screen == "ring":
         if st.button("ПЕРЕРАХУВАТИ ПО ВАГІ", use_container_width=True, key="recalculate_ring_weight"):
             st.session_state.ring_manual_weight = manual_weight_right
             technical_text, client_text, poster_data = calculate_ring({
-                "size": size, "width": width, "thickness": thickness, "manual_weight": manual_weight_right,
+                "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
-                "discount_percent": discount_percent, "coating_usd": coating_usd, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
