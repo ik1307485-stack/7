@@ -415,12 +415,12 @@ def render_client_receipt(receipt_data):
     items_html = ""
     items_html += row("Золото", receipt_data.get("gold_cost", 0))
     items_html += row("Робота", receipt_data.get("work_cost", 0))
-    items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
     #items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
     items_html += row("Покриття", receipt_data.get("coating_cost", 0))
     items_html += row("Діаманти / каміння", receipt_data.get("stones_cost", 0))
     #items_html += row("Доставка", receipt_data.get("delivery", 0))
+    items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
 
     receipt_number = datetime.now().strftime("%d%m%y-%H%M")
     receipt_date = datetime.now().strftime("%d.%m.%Y")
