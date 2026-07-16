@@ -432,7 +432,7 @@ def render_client_receipt(receipt_data):
     #items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
     items_html += row("Покриття", receipt_data.get("coating_cost", 0))
-    stone_cost_label = receipt_data.get("selected_stone_type", "Каміння") if receipt_data.get("has_stones") else "Каміння"
+    #stone_cost_label = receipt_data.get("selected_stone_type", "Каміння") if receipt_data.get("has_stones") else "Каміння"
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
     #items_html += row("Доставка", receipt_data.get("delivery", 0))
     items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
