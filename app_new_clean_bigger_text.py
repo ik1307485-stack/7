@@ -368,7 +368,7 @@ def calculate_ring(data):
 Ширина: {width:g} мм
 Покриття: {coating_client}
 Середня вага виробу: {total_weight:.1f} г
-щщщщщщ: {inserts_text}
+Вставки: {inserts_text}
 Тип каміння: {selected_stone_type}
 
 Середня вартість виробу:
