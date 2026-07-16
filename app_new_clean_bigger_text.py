@@ -1,5 +1,9 @@
+import html
+from datetime import datetime
+
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 GOLD_PRICE = 4500
 WORK_VYSHYVANKA = 3100
@@ -232,16 +236,25 @@ def calculate_wedding_rings(data):
 """
         poster_price = money100(total)
 
-    poster_data = {
+    receipt_data = {
         "title": title.replace("⚜️", "").strip(),
-        "gold": f"{gold_type} золото 585 проби",
+        "gold_type": f"{gold_type} золото 585 проби",
         "sizes": client_sizes_text.replace("Розміри: ", "").replace("Розмір: ", ""),
         "width": client_width_text.replace("Ширина: ", ""),
         "coating": coating_client,
         "weight": f"{total_weight:.1f} г",
-        "price": poster_price,
+        "inserts": inserts_text,
+        "gold_cost": gold_cost,
+        "work_cost": work_cost,
+        "discount": discount,
+        "packaging": PACKAGING,
+        "engraving": engraving,
+        "coating_cost": coating_uah,
+        "stones_cost": stones_uah,
+        "delivery": delivery,
+        "total": total,
     }
-    return technical_text, client_text, poster_data
+    return technical_text, client_text, receipt_data
 
 
 def calculate_ring(data):
@@ -356,17 +369,245 @@ def calculate_ring(data):
 {money100(variant_totals["Муасаніти"])} грн 💎
 """
 
-    poster_data = {
+    receipt_data = {
         "title": "Каблучка індивідуального дизайну",
-        "gold": f"{gold_type} золото 585 проби",
+        "gold_type": f"{gold_type} золото 585 проби",
         "sizes": f"{size:g}",
         "width": f"{width:g} мм",
         "coating": coating_client,
         "weight": f"{total_weight:.1f} г",
-        "price": money100(variant_totals["Натуральні діаманти"]),
+        "inserts": inserts_text,
+        "gold_cost": gold_cost,
+        "work_cost": work_cost,
+        "discount": discount,
+        "packaging": PACKAGING,
+        "engraving": engraving,
+        "coating_cost": coating_uah,
+        "stones_cost": stones_uah,
+        "delivery": delivery,
+        "total": total,
     }
-    return technical_text, client_text, poster_data
+    return technical_text, client_text, receipt_data
 
+
+
+def render_client_receipt(receipt_data):
+    """Виводить охайний чек для клієнта на основі технічного розрахунку."""
+    if not receipt_data:
+        st.info("Спочатку виконайте розрахунок, щоб сформувати чек.")
+        return
+
+    def safe(value):
+        return html.escape(str(value))
+
+    def row(label, value, negative=False):
+        if not value:
+            return ""
+        css_class = "receipt-row negative" if negative else "receipt-row"
+        sign = "−" if negative else ""
+        return (
+            f'<div class="{css_class}">'
+            f'<span>{safe(label)}</span>'
+            f'<strong>{sign}{money(value)} грн</strong>'
+            f'</div>'
+        )
+
+    items_html = ""
+    items_html += row("Золото", receipt_data.get("gold_cost", 0))
+    items_html += row("Робота", receipt_data.get("work_cost", 0))
+    items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
+    items_html += row("Упаковка", receipt_data.get("packaging", 0))
+    items_html += row("Гравіювання", receipt_data.get("engraving", 0))
+    items_html += row("Покриття", receipt_data.get("coating_cost", 0))
+    items_html += row("Діаманти / каміння", receipt_data.get("stones_cost", 0))
+    items_html += row("Доставка", receipt_data.get("delivery", 0))
+
+    receipt_number = datetime.now().strftime("%d%m%y-%H%M")
+    receipt_date = datetime.now().strftime("%d.%m.%Y")
+
+    receipt_html = f"""
+    <!DOCTYPE html>
+    <html lang="uk">
+    <head>
+    <meta charset="UTF-8">
+    <style>
+        * {{ box-sizing: border-box; }}
+        body {{
+            margin: 0;
+            padding: 18px;
+            background: #f4f4f2;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #1d1d1d;
+        }}
+        .receipt {{
+            width: 100%;
+            max-width: 660px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #deded9;
+            border-radius: 18px;
+            padding: 34px 38px 30px;
+            box-shadow: 0 14px 40px rgba(0,0,0,.08);
+        }}
+        .logo {{
+            text-align: center;
+            font-family: Georgia, serif;
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            margin-bottom: 5px;
+        }}
+        .brand {{
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 4px;
+            color: #777;
+            margin-bottom: 28px;
+        }}
+        .receipt-title {{
+            text-align: center;
+            font-size: 13px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #777;
+            margin-bottom: 8px;
+        }}
+        .product-title {{
+            text-align: center;
+            font-family: Georgia, serif;
+            font-size: 22px;
+            line-height: 1.3;
+            margin-bottom: 24px;
+        }}
+        .meta {{
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            border-top: 1px dashed #bdbdb8;
+            border-bottom: 1px dashed #bdbdb8;
+            padding: 12px 0;
+            margin-bottom: 22px;
+            color: #6a6a66;
+            font-size: 12px;
+        }}
+        .specs {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 11px 24px;
+            padding-bottom: 22px;
+            border-bottom: 1px solid #e5e5e1;
+        }}
+        .spec {{
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            font-size: 13px;
+        }}
+        .spec span:first-child {{ color: #777; }}
+        .spec strong {{ text-align: right; font-weight: 600; }}
+        .items {{
+            padding: 18px 0 12px;
+            border-bottom: 1px dashed #bdbdb8;
+        }}
+        .receipt-row {{
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 6px 0;
+            font-size: 14px;
+        }}
+        .receipt-row strong {{ white-space: nowrap; }}
+        .receipt-row.negative {{ color: #8b3d3d; }}
+        .total {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            padding-top: 22px;
+        }}
+        .total-label {{
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #6c6c68;
+        }}
+        .total-value {{
+            font-family: Georgia, serif;
+            font-size: 31px;
+            font-weight: 700;
+            white-space: nowrap;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 28px;
+            padding-top: 17px;
+            border-top: 1px solid #ecece8;
+            color: #858581;
+            font-size: 11px;
+            line-height: 1.6;
+        }}
+        .print-button {{
+            display: block;
+            width: 100%;
+            margin-top: 18px;
+            padding: 13px 16px;
+            border: 0;
+            border-radius: 10px;
+            background: #202020;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }}
+        @media print {{
+            body {{ background: white; padding: 0; }}
+            .receipt {{ box-shadow: none; border: none; }}
+            .print-button {{ display: none; }}
+        }}
+    </style>
+    </head>
+    <body>
+      <div class="receipt">
+        <div class="logo">L&amp;L</div>
+        <div class="brand">LANA &amp; LONA JEWELLERY</div>
+
+        <div class="receipt-title">Персональний розрахунок</div>
+        <div class="product-title">{safe(receipt_data.get("title", ""))}</div>
+
+        <div class="meta">
+          <span>№ {receipt_number}</span>
+          <span>{receipt_date}</span>
+        </div>
+
+        <div class="specs">
+          <div class="spec"><span>Золото</span><strong>{safe(receipt_data.get("gold_type", ""))}</strong></div>
+          <div class="spec"><span>Розмір</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
+          <div class="spec"><span>Ширина</span><strong>{safe(receipt_data.get("width", ""))}</strong></div>
+          <div class="spec"><span>Покриття</span><strong>{safe(receipt_data.get("coating", ""))}</strong></div>
+          <div class="spec"><span>Вага</span><strong>{safe(receipt_data.get("weight", ""))}</strong></div>
+          <div class="spec"><span>Вставки</span><strong>{safe(receipt_data.get("inserts", "не додано"))}</strong></div>
+        </div>
+
+        <div class="items">{items_html}</div>
+
+        <div class="total">
+          <div class="total-label">До сплати</div>
+          <div class="total-value">{money(receipt_data.get("total", 0))} грн</div>
+        </div>
+
+        <div class="footer">
+          Розрахунок є орієнтовним і може уточнюватися після погодження всіх деталей виробу.<br>
+          Дякуємо, що обираєте Lana &amp; Lona.
+        </div>
+
+        <button class="print-button" onclick="window.print()">ДРУКУВАТИ / ЗБЕРЕГТИ PDF</button>
+      </div>
+    </body>
+    </html>
+    """
+
+    components.html(receipt_html, height=830, scrolling=True)
 
 
 st.set_page_config(page_title="Калькулятор Lana & Lona", layout="wide")
@@ -442,7 +683,7 @@ elif st.session_state.screen == "wedding":
         if calculate_btn:
             st.session_state.wedding_manual_weight_1 = 0.0
             st.session_state.wedding_manual_weight_2 = 0.0
-            technical_text, client_text, poster_data = calculate_wedding_rings({
+            technical_text, client_text, receipt_data = calculate_wedding_rings({
                 "design": design, "gold_type": gold_type, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
@@ -451,6 +692,7 @@ elif st.session_state.screen == "wedding":
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
+            st.session_state.receipt_data = receipt_data
 
         st.subheader("📊 Технічний розрахунок")
         st.caption("Тут менеджер може виправити вагу вручну і перерахувати ціну.")
@@ -467,7 +709,7 @@ elif st.session_state.screen == "wedding":
         if st.button("ПЕРЕРАХУВАТИ ПО ВАЗІ", use_container_width=True, key="recalculate_wedding_weight"):
             st.session_state.wedding_manual_weight_1 = manual_weight_1_right
             st.session_state.wedding_manual_weight_2 = manual_weight_2_right
-            technical_text, client_text, poster_data = calculate_wedding_rings({
+            technical_text, client_text, receipt_data = calculate_wedding_rings({
                 "design": design, "gold_type": gold_type, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
@@ -476,11 +718,14 @@ elif st.session_state.screen == "wedding":
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
+            st.session_state.receipt_data = receipt_data
 
         st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
         st.subheader("📋 Текст для клієнта")
         st.code(st.session_state.get("client_text", ""), language=None)
         st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
+        st.subheader("🧾 Чек для клієнта")
+        render_client_receipt(st.session_state.get("receipt_data"))
 
 elif st.session_state.screen == "ring":
     st.button("← Назад", on_click=go_start)
@@ -501,7 +746,7 @@ elif st.session_state.screen == "ring":
         small_qty = st.number_input("Малі діаманти — к-сть", min_value=0, value=0, step=1)
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
-        coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
+        coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="ring_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
         calculate_btn = st.button("РОЗРАХУВАТИ", use_container_width=True)
@@ -510,28 +755,32 @@ elif st.session_state.screen == "ring":
         current_auto_weight = calc_weight(size, width, thickness)
         if calculate_btn:
             st.session_state.ring_manual_weight = 0.0
-            technical_text, client_text, poster_data = calculate_ring({
+            technical_text, client_text, receipt_data = calculate_ring({
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
+            st.session_state.receipt_data = receipt_data
 
         st.subheader("📊 Технічний розрахунок")
         st.caption("Тут менеджер може виправити вагу вручну і перерахувати ціну.")
         manual_weight_right = st.number_input("Вага виробу, г", min_value=0.0, value=st.session_state.get("ring_manual_weight", 0.0) or current_auto_weight, step=0.1, format="%.2f", key="ring_weight_input")
         if st.button("ПЕРЕРАХУВАТИ ПО ВАГІ", use_container_width=True, key="recalculate_ring_weight"):
             st.session_state.ring_manual_weight = manual_weight_right
-            technical_text, client_text, poster_data = calculate_ring({
+            technical_text, client_text, receipt_data = calculate_ring({
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
+            st.session_state.receipt_data = receipt_data
 
         st.text_area("Технічний текст", value=st.session_state.get("technical_text", ""), height=420)
         st.subheader("📋 Текст для клієнта")
         st.code(st.session_state.get("client_text", ""), language=None)
         st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
+        st.subheader("🧾 Чек для клієнта")
+        render_client_receipt(st.session_state.get("receipt_data"))
