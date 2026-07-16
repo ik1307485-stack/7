@@ -116,6 +116,7 @@ def calculate_wedding_rings(data):
     ring_stone_enabled = data["ring_stone_enabled"]
     ring_stone_size = data["ring_stone_size"]
     ring_stone_qty = data["ring_stone_qty"] if ring_stone_enabled else 0
+    selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
 
     manual_weight_1 = data.get("manual_weight_1", 0)
     manual_weight_2 = data.get("manual_weight_2", 0)
@@ -142,7 +143,7 @@ def calculate_wedding_rings(data):
     gold_cost = total_weight * GOLD_PRICE
     base_total_without_stones = gold_cost + work_after_discount + PACKAGING + engraving + coating_uah + delivery
 
-    stones_usd, stones_uah = get_stone_cost_by_type("Натуральні діаманти", ring_stone_size, ring_stone_qty, usd_rate)
+    stones_usd, stones_uah = get_stone_cost_by_type(selected_stone_type, ring_stone_size, ring_stone_qty, usd_rate)
     total = base_total_without_stones + stones_uah
 
     title = "Індивідуальна модель обручок «Вишиванка» ⚜️" if design == "Вишиванка" else "Індивідуальна модель обручок ⚜️"
@@ -195,7 +196,7 @@ def calculate_wedding_rings(data):
 Покриття:
 {money(coating_uah)} грн
 
-Діаманти / каміння:
+Каміння ({selected_stone_type}):
 {money(stones_uah)} грн ({stones_usd}$)
 
 Доставка:
@@ -220,17 +221,14 @@ def calculate_wedding_rings(data):
         for stone_type in STONE_PRICES_USD.keys():
             _, stone_uah_variant = get_stone_cost_by_type(stone_type, ring_stone_size, ring_stone_qty, usd_rate)
             variant_totals[stone_type] = base_total_without_stones + stone_uah_variant
+        selected_total = variant_totals[selected_stone_type]
         client_text += f"""Вставки: {inserts_text}
+Тип каміння: {selected_stone_type}
 
 Середня вартість виробу:
-• з натуральними діамантами:
-{money100(variant_totals["Натуральні діаманти"])} грн 💎
-• з лабораторними діамантами:
-{money100(variant_totals["Лабораторні діаманти"])} грн 💎
-• з муасанітами:
-{money100(variant_totals["Муасаніти"])} грн 💎
+{money100(selected_total)} грн 💎
 """
-        poster_price = money100(variant_totals["Натуральні діаманти"])
+        poster_price = money100(selected_total)
     else:
         client_text += f"""
 Середня вартість виробу:
@@ -256,6 +254,8 @@ def calculate_wedding_rings(data):
         "delivery": delivery,
         "total": total,
         "has_stones": ring_stone_qty > 0,
+        "selected_stone_type": selected_stone_type if ring_stone_qty > 0 else "Без каміння",
+        "selected_total": variant_totals[selected_stone_type] if ring_stone_qty > 0 else total,
         "variant_totals": {
             "Натуральні діаманти": variant_totals["Натуральні діаманти"] if ring_stone_qty > 0 else total,
             "Лабораторні діаманти": variant_totals["Лабораторні діаманти"] if ring_stone_qty > 0 else total,
@@ -283,6 +283,7 @@ def calculate_ring(data):
     main_qty = data["main_qty"]
     small_size = data["small_size"]
     small_qty = data["small_qty"]
+    selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
     manual_weight = data.get("manual_weight", 0)
 
     auto_weight = calc_weight(size, width, thickness)
@@ -295,8 +296,8 @@ def calculate_ring(data):
     gold_cost = total_weight * GOLD_PRICE
     base_total_without_stones = gold_cost + work_after_discount + PACKAGING + engraving + coating_uah + delivery
 
-    main_usd, main_uah = get_stone_cost_by_type("Натуральні діаманти", main_size, main_qty, usd_rate)
-    small_usd, small_uah = get_stone_cost_by_type("Натуральні діаманти", small_size, small_qty, usd_rate)
+    main_usd, main_uah = get_stone_cost_by_type(selected_stone_type, main_size, main_qty, usd_rate)
+    small_usd, small_uah = get_stone_cost_by_type(selected_stone_type, small_size, small_qty, usd_rate)
     stones_usd = main_usd + small_usd
     stones_uah = main_uah + small_uah
     total = base_total_without_stones + stones_uah
@@ -342,7 +343,7 @@ def calculate_ring(data):
 Покриття:
 {money(coating_uah)} грн
 
-Діаманти / каміння:
+Каміння ({selected_stone_type}):
 {money(stones_uah)} грн ({stones_usd}$)
 
 Доставка:
@@ -359,6 +360,7 @@ def calculate_ring(data):
         _, small_uah_variant = get_stone_cost_by_type(stone_type, small_size, small_qty, usd_rate)
         variant_totals[stone_type] = base_total_without_stones + main_uah_variant + small_uah_variant
 
+    selected_total = variant_totals[selected_stone_type]
     client_text = f"""Каблучка індивідуального дизайну ⚜️
 
 {gold_type} золото 585 проби 💍
@@ -367,14 +369,10 @@ def calculate_ring(data):
 Покриття: {coating_client}
 Середня вага виробу: {total_weight:.1f} г
 Вставки: {inserts_text}
+Тип каміння: {selected_stone_type}
 
 Середня вартість виробу:
-• з натуральними діамантами:
-{money100(variant_totals["Натуральні діаманти"])} грн 💎
-• з лабораторними діамантами:
-{money100(variant_totals["Лабораторні діаманти"])} грн 💎
-• з муасанітами:
-{money100(variant_totals["Муасаніти"])} грн 💎
+{money100(selected_total)} грн 💎
 """
 
     receipt_data = {
@@ -395,6 +393,8 @@ def calculate_ring(data):
         "delivery": delivery,
         "total": total,
         "has_stones": (main_qty + small_qty) > 0,
+        "selected_stone_type": selected_stone_type if (main_qty + small_qty) > 0 else "Без каміння",
+        "selected_total": selected_total if (main_qty + small_qty) > 0 else total,
         "variant_totals": {
             "Натуральні діаманти": variant_totals["Натуральні діаманти"],
             "Лабораторні діаманти": variant_totals["Лабораторні діаманти"],
@@ -433,32 +433,25 @@ def render_client_receipt(receipt_data):
     items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
     items_html += row("Покриття", receipt_data.get("coating_cost", 0))
-    items_html += row("Діаманти / каміння", receipt_data.get("stones_cost", 0))
+    stone_cost_label = receipt_data.get("selected_stone_type", "Каміння") if receipt_data.get("has_stones") else "Каміння"
+    items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
     items_html += row("Доставка", receipt_data.get("delivery", 0))
 
-    variants_html = ""
+    selected_stone_html = ""
     if receipt_data.get("has_stones"):
-        variants = receipt_data.get("variant_totals", {})
-        variants_html = f"""
-        <div class="variants">
-          <div class="variants-heading">Варіанти до сплати</div>
-          <div class="variant-card featured">
+        selected_stone_html = f"""
+        <div class="selected-stone">
+          <div class="selected-stone-caption">Обране каміння</div>
+          <div class="selected-stone-content">
             <div>
-              <span class="variant-label">З натуральними діамантами</span>
-              <small>Рекомендований варіант</small>
+              <span class="selected-stone-name">{safe(receipt_data.get("selected_stone_type", ""))}</span>
+              <small>{safe(receipt_data.get("inserts", ""))}</small>
             </div>
-            <strong>{money100(variants.get("Натуральні діаманти", 0))} грн</strong>
-          </div>
-          <div class="variant-card">
-            <span class="variant-label">З лабораторними діамантами</span>
-            <strong>{money100(variants.get("Лабораторні діаманти", 0))} грн</strong>
-          </div>
-          <div class="variant-card">
-            <span class="variant-label">З муасанітами</span>
-            <strong>{money100(variants.get("Муасаніти", 0))} грн</strong>
+            <strong>{money100(receipt_data.get("selected_total", 0))} грн</strong>
           </div>
         </div>
         """
+
 
     receipt_number = datetime.now().strftime("%d%m%y-%H%M")
     receipt_date = datetime.now().strftime("%d.%m.%Y")
@@ -551,50 +544,41 @@ def render_client_receipt(receipt_data):
         }}
         .receipt-row strong {{ white-space: nowrap; }}
         .receipt-row.negative {{ color: #8b3d3d; }}
-        .variants {{
-            margin-top: 22px;
-            padding: 20px 0 4px;
-            border-top: 1px solid #e8e8e3;
+        .selected-stone {{
+            margin-top: 24px;
+            padding: 18px;
+            border: 1px solid #d8d8d1;
+            border-radius: 14px;
+            background: #f8f8f5;
         }}
-        .variants-heading {{
-            font-size: 11px;
-            letter-spacing: 2.4px;
+        .selected-stone-caption {{
+            font-size: 10px;
+            letter-spacing: 2.2px;
             text-transform: uppercase;
             color: #777;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }}
-        .variant-card {{
+        .selected-stone-content {{
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 18px;
-            padding: 13px 15px;
-            margin-bottom: 8px;
-            border: 1px solid #e5e5df;
-            border-radius: 11px;
-            background: #fafaf8;
+            gap: 20px;
         }}
-        .variant-card.featured {{
-            border-color: #222;
-            background: #222;
-            color: #fff;
-        }}
-        .variant-label {{
+        .selected-stone-name {{
             display: block;
-            font-size: 13px;
+            font-size: 15px;
+            font-weight: 700;
         }}
-        .variant-card small {{
+        .selected-stone-content small {{
             display: block;
-            margin-top: 3px;
-            color: #bdbdb8;
-            font-size: 9px;
-            letter-spacing: .7px;
-            text-transform: uppercase;
+            margin-top: 4px;
+            color: #777;
+            font-size: 11px;
         }}
-        .variant-card strong {{
+        .selected-stone-content strong {{
             white-space: nowrap;
             font-family: Georgia, serif;
-            font-size: 17px;
+            font-size: 20px;
         }}
         .total {{
             display: flex;
@@ -668,11 +652,11 @@ def render_client_receipt(receipt_data):
 
         <div class="items">{items_html}</div>
 
-        {variants_html}
+        {selected_stone_html}
 
         <div class="total">
-          <div class="total-label">До сплати{" (натуральні діаманти)" if receipt_data.get("has_stones") else ""}</div>
-          <div class="total-value">{money100(receipt_data.get("variant_totals", {}).get("Натуральні діаманти", receipt_data.get("total", 0))) if receipt_data.get("has_stones") else money(receipt_data.get("total", 0))} грн</div>
+          <div class="total-label">До сплати</div>
+          <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0))) if receipt_data.get("has_stones") else money(receipt_data.get("total", 0))} грн</div>
         </div>
 
         <div class="footer">
@@ -749,6 +733,12 @@ elif st.session_state.screen == "wedding":
         ring_stone_ring = st.selectbox("В яку обручку додати", [1, 2] if use_second_ring else [1], disabled=not ring_stone_enabled)
         ring_stone_size = st.selectbox("Розмір діаманта", stone_sizes, index=1, disabled=not ring_stone_enabled)
         ring_stone_qty = st.number_input("Кількість діамантів", min_value=0, value=0, step=1, disabled=not ring_stone_enabled)
+        selected_stone_type = st.selectbox(
+            "Яке каміння обрав клієнт?",
+            list(STONE_PRICES_USD.keys()),
+            disabled=not ring_stone_enabled,
+            key="wedding_selected_stone_type",
+        )
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
@@ -768,6 +758,7 @@ elif st.session_state.screen == "wedding":
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
                 "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
+                "selected_stone_type": selected_stone_type,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -794,6 +785,7 @@ elif st.session_state.screen == "wedding":
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
                 "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
+                "selected_stone_type": selected_stone_type,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -823,6 +815,11 @@ elif st.session_state.screen == "ring":
         main_qty = st.number_input("Основний діамант — к-сть", min_value=0, value=0, step=1)
         small_size = st.selectbox("Малі діаманти — розмір", stone_sizes, index=0)
         small_qty = st.number_input("Малі діаманти — к-сть", min_value=0, value=0, step=1)
+        selected_stone_type = st.selectbox(
+            "Яке каміння обрав клієнт?",
+            list(STONE_PRICES_USD.keys()),
+            key="ring_selected_stone_type",
+        )
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="ring_coating_option")
@@ -837,6 +834,7 @@ elif st.session_state.screen == "ring":
             technical_text, client_text, receipt_data = calculate_ring({
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
+                "selected_stone_type": selected_stone_type,
                 "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
@@ -851,6 +849,7 @@ elif st.session_state.screen == "ring":
             technical_text, client_text, receipt_data = calculate_ring({
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
+                "selected_stone_type": selected_stone_type,
                 "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
