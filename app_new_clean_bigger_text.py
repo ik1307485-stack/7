@@ -223,10 +223,14 @@ def calculate_wedding_rings(data):
             variant_totals[stone_type] = base_total_without_stones + stone_uah_variant
         selected_total = variant_totals[selected_stone_type]
         client_text += f"""Вставки: {inserts_text}
-Тип каміння: {selected_stone_type}
 
 Середня вартість виробу:
-{money100(selected_total)} грн 💎
+• з натуральними діамантами:
+{money100(variant_totals["Натуральні діаманти"])} грн 💎
+• з лабораторними діамантами:
+{money100(variant_totals["Лабораторні діаманти"])} грн 💎
+• з муасанітами:
+{money100(variant_totals["Муасаніти"])} грн 💎
 """
         poster_price = money100(selected_total)
     else:
@@ -369,10 +373,14 @@ def calculate_ring(data):
 Покриття: {coating_client}
 Середня вага виробу: {total_weight:.1f} г
 Вставки: {inserts_text}
-Тип каміння: {selected_stone_type}
 
 Середня вартість виробу:
-{money100(selected_total)} грн 💎
+• з натуральними діамантами:
+{money100(variant_totals["Натуральні діаманти"])} грн 💎
+• з лабораторними діамантами:
+{money100(variant_totals["Лабораторні діаманти"])} грн 💎
+• з муасанітами:
+{money100(variant_totals["Муасаніти"])} грн 💎
 """
 
     receipt_data = {
@@ -429,14 +437,13 @@ def render_client_receipt(receipt_data):
     items_html = ""
     items_html += row("Золото", receipt_data.get("gold_cost", 0))
     items_html += row("Робота", receipt_data.get("work_cost", 0))
-    #items_html += row("Упаковка", receipt_data.get("packaging", 0))
+    items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
+    items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
     items_html += row("Покриття", receipt_data.get("coating_cost", 0))
     stone_cost_label = receipt_data.get("selected_stone_type", "Каміння") if receipt_data.get("has_stones") else "Каміння"
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
-    #items_html += row("Доставка", receipt_data.get("delivery", 0))
-    items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
-
+    items_html += row("Доставка", receipt_data.get("delivery", 0))
 
     selected_stone_html = ""
     if receipt_data.get("has_stones"):
@@ -462,6 +469,7 @@ def render_client_receipt(receipt_data):
     <html lang="uk">
     <head>
     <meta charset="UTF-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * {{ box-sizing: border-box; }}
         body {{
@@ -609,29 +617,39 @@ def render_client_receipt(receipt_data):
             font-size: 11px;
             line-height: 1.6;
         }}
-        .print-button {{
+        .receipt-actions {{
+            width: 100%;
+            max-width: 660px;
+            margin: 16px auto 0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }}
+        .action-button {{
             display: block;
             width: 100%;
-            margin-top: 18px;
-            padding: 13px 16px;
+            padding: 13px 12px;
             border: 0;
             border-radius: 10px;
             background: #202020;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: 1px;
+            letter-spacing: .6px;
             cursor: pointer;
+        }}
+        .action-button.secondary {{
+            background: #666;
         }}
         @media print {{
             body {{ background: white; padding: 0; }}
             .receipt {{ box-shadow: none; border: none; }}
-            .print-button {{ display: none; }}
+            .receipt-actions {{ display: none; }}
         }}
     </style>
     </head>
     <body>
-      <div class="receipt">
+      <div id="receipt-card" class="receipt">
         <div class="logo-wrap"><img class="logo-image" src="{LOGO_DATA_URL}" alt="Lana &amp; Lona Jewellery"></div>
 
         <div class="receipt-title">Персональний розрахунок</div>
@@ -665,13 +683,39 @@ def render_client_receipt(receipt_data):
           Дякуємо, що обираєте Lana &amp; Lona.
         </div>
 
-        <button class="print-button" onclick="window.print()">ДРУКУВАТИ / ЗБЕРЕГТИ PDF</button>
       </div>
+
+      <div class="receipt-actions">
+        <button class="action-button" onclick="downloadReceipt('png')">ЗАВАНТАЖИТИ PNG</button>
+        <button class="action-button" onclick="downloadReceipt('jpg')">ЗАВАНТАЖИТИ JPG</button>
+        <button class="action-button secondary" onclick="window.print()">ДРУК / PDF</button>
+      </div>
+
+      <script>
+        async function downloadReceipt(format) {{
+          const receipt = document.getElementById('receipt-card');
+          const canvas = await html2canvas(receipt, {{
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+          }});
+
+          const link = document.createElement('a');
+          if (format === 'jpg') {{
+            link.download = 'lana_lona_receipt.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+          }} else {{
+            link.download = 'lana_lona_receipt.png';
+            link.href = canvas.toDataURL('image/png');
+          }}
+          link.click();
+        }}
+      </script>
     </body>
     </html>
     """
 
-    components.html(receipt_html, height=1040, scrolling=True)
+    components.html(receipt_html, height=1120, scrolling=True)
 
 
 st.set_page_config(page_title="Калькулятор Lana & Lona", layout="wide")
