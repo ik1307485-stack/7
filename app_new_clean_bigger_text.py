@@ -12,6 +12,7 @@ WORK_VYSHYVANKA = 3100
 WORK_INDIVIDUAL = 3000
 WORK_RING = 6100
 PACKAGING = 3000
+BASE_DISCOUNT = 9400
 K = 13
 
 GOLD_TYPES = ["Червоне", "Лимонне", "Біле", "Рожеве"]
@@ -112,6 +113,8 @@ def calculate_wedding_rings(data):
     engraving = data["engraving"]
     delivery = data["delivery"]
     discount_percent = data["discount_percent"]
+    base_discount_enabled = data.get("base_discount_enabled", False)
+    base_discount = BASE_DISCOUNT if base_discount_enabled else 0
 
     ring_stone_enabled = data["ring_stone_enabled"]
     ring_stone_size = data["ring_stone_size"]
@@ -138,10 +141,14 @@ def calculate_wedding_rings(data):
 
     work_per_gram = get_work_price("Пара обручок", design)
     work_cost = total_weight * work_per_gram
-    discount = work_cost * (discount_percent / 100)
-    work_after_discount = work_cost - discount
+    product_discount = work_cost * (discount_percent / 100)
+    total_discount = product_discount + base_discount
+    work_after_discount = work_cost - product_discount
     gold_cost = total_weight * GOLD_PRICE
-    base_total_without_stones = gold_cost + work_after_discount + PACKAGING + engraving + coating_uah + delivery
+    base_total_without_stones = (
+        gold_cost + work_cost + PACKAGING + engraving + coating_uah + delivery
+        - total_discount
+    )
 
     stones_usd, stones_uah = get_stone_cost_by_type(selected_stone_type, ring_stone_size, ring_stone_qty, usd_rate)
     total = base_total_without_stones + stones_uah
@@ -175,17 +182,23 @@ def calculate_wedding_rings(data):
 Загальна вага:
 {total_weight:.2f} г
 
-Золото:
+Вартість дорогоцінного металу:
 {money(gold_cost)} грн
 
-Робота:
+Робота ювеліра повного циклу:
 {money(work_cost)} грн
+• Відлив (40%): {money(work_cost * 0.40)} грн
+• Ручна обробка (30%): {money(work_cost * 0.30)} грн
+• Фінальне шліфування (30%): {money(work_cost * 0.30)} грн
 
-Знижка:
--{money(discount)} грн
+Знижка за виробом:
+-{money(product_discount)} грн
 
-Робота після знижки:
-{money(work_after_discount)} грн
+Основна знижка:
+-{money(base_discount)} грн
+
+Загальна знижка:
+-{money(total_discount)} грн
 
 Упаковка:
 {money(PACKAGING)} грн
@@ -250,7 +263,13 @@ def calculate_wedding_rings(data):
         "inserts": inserts_text,
         "gold_cost": gold_cost,
         "work_cost": work_cost,
-        "discount": discount,
+        "casting_cost": work_cost * 0.40,
+        "manual_processing_cost": work_cost * 0.30,
+        "final_polishing_cost": work_cost * 0.30,
+        "product_discount": product_discount,
+        "base_discount": base_discount,
+        "total_discount": total_discount,
+        "base_discount_enabled": base_discount_enabled,
         "packaging": PACKAGING,
         "engraving": engraving,
         "coating_cost": coating_uah,
@@ -283,6 +302,8 @@ def calculate_ring(data):
     engraving = data["engraving"]
     delivery = data["delivery"]
     discount_percent = data["discount_percent"]
+    base_discount_enabled = data.get("base_discount_enabled", False)
+    base_discount = BASE_DISCOUNT if base_discount_enabled else 0
     main_size = data["main_size"]
     main_qty = data["main_qty"]
     small_size = data["small_size"]
@@ -295,10 +316,14 @@ def calculate_ring(data):
     weight_note = "Вага задана вручну" if manual_weight > 0 else "Вага розрахована автоматично"
 
     work_cost = total_weight * get_work_price("Каблучка")
-    discount = work_cost * (discount_percent / 100)
-    work_after_discount = work_cost - discount
+    product_discount = work_cost * (discount_percent / 100)
+    total_discount = product_discount + base_discount
+    work_after_discount = work_cost - product_discount
     gold_cost = total_weight * GOLD_PRICE
-    base_total_without_stones = gold_cost + work_after_discount + PACKAGING + engraving + coating_uah + delivery
+    base_total_without_stones = (
+        gold_cost + work_cost + PACKAGING + engraving + coating_uah + delivery
+        - total_discount
+    )
 
     main_usd, main_uah = get_stone_cost_by_type(selected_stone_type, main_size, main_qty, usd_rate)
     small_usd, small_uah = get_stone_cost_by_type(selected_stone_type, small_size, small_qty, usd_rate)
@@ -326,17 +351,23 @@ def calculate_ring(data):
 Загальна вага:
 {total_weight:.2f} г
 
-Золото:
+Вартість дорогоцінного металу:
 {money(gold_cost)} грн
 
-Робота:
+Робота ювеліра повного циклу:
 {money(work_cost)} грн
+• Відлив (40%): {money(work_cost * 0.40)} грн
+• Ручна обробка (30%): {money(work_cost * 0.30)} грн
+• Фінальне шліфування (30%): {money(work_cost * 0.30)} грн
 
-Знижка:
--{money(discount)} грн
+Знижка за виробом:
+-{money(product_discount)} грн
 
-Робота після знижки:
-{money(work_after_discount)} грн
+Основна знижка:
+-{money(base_discount)} грн
+
+Загальна знижка:
+-{money(total_discount)} грн
 
 Упаковка:
 {money(PACKAGING)} грн
@@ -393,7 +424,13 @@ def calculate_ring(data):
         "inserts": inserts_text,
         "gold_cost": gold_cost,
         "work_cost": work_cost,
-        "discount": discount,
+        "casting_cost": work_cost * 0.40,
+        "manual_processing_cost": work_cost * 0.30,
+        "final_polishing_cost": work_cost * 0.30,
+        "product_discount": product_discount,
+        "base_discount": base_discount,
+        "total_discount": total_discount,
+        "base_discount_enabled": base_discount_enabled,
         "packaging": PACKAGING,
         "engraving": engraving,
         "coating_cost": coating_uah,
@@ -434,31 +471,36 @@ def render_client_receipt(receipt_data):
             f'</div>'
         )
 
+    def subrow(label, value, percent):
+        return (
+            '<div class="receipt-subrow">'
+            f'<span>{safe(label)} <small>{percent}%</small></span>'
+            f'<strong>{money(value)} грн</strong>'
+            '</div>'
+        )
+
     items_html = ""
-    items_html += row("Золото", receipt_data.get("gold_cost", 0))
-    items_html += row("Робота", receipt_data.get("work_cost", 0))
-    #items_html += row("Упаковка", receipt_data.get("packaging", 0))
+    items_html += row("Вартість дорогоцінного металу", receipt_data.get("gold_cost", 0))
+    items_html += '<div class="work-group">'
+    items_html += row("Робота ювеліра повного циклу", receipt_data.get("work_cost", 0))
+    items_html += subrow("Відлив", receipt_data.get("casting_cost", 0), 40)
+    items_html += subrow("Ручна обробка", receipt_data.get("manual_processing_cost", 0), 30)
+    items_html += subrow("Фінальне шліфування", receipt_data.get("final_polishing_cost", 0), 30)
+    items_html += '</div>'
+    items_html += row("Знижка за виробом", receipt_data.get("product_discount", 0), negative=True)
+    if receipt_data.get("base_discount_enabled"):
+        items_html += row("Основна знижка", receipt_data.get("base_discount", 0), negative=True)
+    items_html += row("Загальна знижка", receipt_data.get("total_discount", 0), negative=True)
+    items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
     items_html += row("Покриття", receipt_data.get("coating_cost", 0))
-    stone_cost_label = receipt_data.get("selected_stone_type", "Каміння") if receipt_data.get("has_stones") else "Каміння"
+    stone_cost_label = (
+        f"Каміння — {receipt_data.get('selected_stone_type', '')}"
+        if receipt_data.get("has_stones")
+        else "Каміння"
+    )
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
-    #items_html += row("Доставка", receipt_data.get("delivery", 0))
-    items_html += row("Знижка", receipt_data.get("discount", 0), negative=True)
-
-    selected_stone_html = ""
-    if receipt_data.get("has_stones"):
-        selected_stone_html = f"""
-        <div class="selected-stone">
-          <div class="selected-stone-caption">Обране каміння</div>
-          <div class="selected-stone-content">
-            <div>
-              <span class="selected-stone-name">{safe(receipt_data.get("selected_stone_type", ""))}</span>
-              <small>{safe(receipt_data.get("inserts", ""))}</small>
-            </div>
-            <strong>{money100(receipt_data.get("selected_total", 0))} грн</strong>
-          </div>
-        </div>
-        """
+    items_html += row("Доставка", receipt_data.get("delivery", 0))
 
 
     receipt_number = datetime.now().strftime("%d%m%y-%H%M")
@@ -494,8 +536,8 @@ def render_client_receipt(receipt_data):
             margin-bottom: 25px;
         }}
         .logo-image {{
-            width: 115px;
-            height: 115px;
+            width: 88px;
+            height: 88px;
             object-fit: contain;
             display: inline-block;
         }}
@@ -553,42 +595,32 @@ def render_client_receipt(receipt_data):
         }}
         .receipt-row strong {{ white-space: nowrap; }}
         .receipt-row.negative {{ color: #8b3d3d; }}
-        .selected-stone {{
-            margin-top: 24px;
-            padding: 18px;
-            border: 1px solid #d8d8d1;
-            border-radius: 14px;
-            background: #f8f8f5;
-        }}
-        .selected-stone-caption {{
-            font-size: 10px;
-            letter-spacing: 2.2px;
-            text-transform: uppercase;
-            color: #777;
-            margin-bottom: 10px;
-        }}
-        .selected-stone-content {{
+        .receipt-subrow {{
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            gap: 20px;
-        }}
-        .selected-stone-name {{
-            display: block;
-            font-size: 15px;
-            font-weight: 700;
-        }}
-        .selected-stone-content small {{
-            display: block;
-            margin-top: 4px;
+            gap: 18px;
+            padding: 4px 0 4px 18px;
             color: #777;
-            font-size: 11px;
+            font-size: 12px;
         }}
-        .selected-stone-content strong {{
+        .receipt-subrow strong {{
+            color: #555;
+            font-weight: 600;
             white-space: nowrap;
-            font-family: Georgia, serif;
-            font-size: 20px;
         }}
+        .receipt-subrow small {{
+            color: #aaa;
+            font-size: 9px;
+            margin-left: 4px;
+        }}
+        .work-group {{
+            margin: 8px 0;
+            padding: 8px 12px 10px;
+            background: #fafafa;
+            border-left: 3px solid #222;
+            border-radius: 0 8px 8px 0;
+        }}
+        .work-group .receipt-row {{ padding-top: 3px; }}
         .total {{
             display: flex;
             justify-content: space-between;
@@ -671,7 +703,6 @@ def render_client_receipt(receipt_data):
 
         <div class="items">{items_html}</div>
 
-        {selected_stone_html}
 
         <div class="total">
           <div class="total-label">До сплати</div>
@@ -785,7 +816,12 @@ elif st.session_state.screen == "wedding":
             key="wedding_selected_stone_type",
         )
         st.markdown("### Додатково")
-        discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
+        discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
+        base_discount_enabled = st.checkbox(
+            "Застосувати основну знижку 9 400 грн",
+            value=False,
+            key="wedding_base_discount",
+        )
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
@@ -801,7 +837,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "gold_type": gold_type, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
-                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
             })
@@ -828,7 +864,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "gold_type": gold_type, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
-                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
             })
@@ -866,7 +902,12 @@ elif st.session_state.screen == "ring":
             key="ring_selected_stone_type",
         )
         st.markdown("### Додатково")
-        discount_percent = st.selectbox("Знижка, %", [0, 7, 10, 15, 20])
+        discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
+        base_discount_enabled = st.checkbox(
+            "Застосувати основну знижку 9 400 грн",
+            value=False,
+            key="ring_base_discount",
+        )
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="ring_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
@@ -880,7 +921,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -895,7 +936,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
