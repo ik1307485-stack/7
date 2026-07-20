@@ -187,9 +187,9 @@ def calculate_wedding_rings(data):
 
 Робота ювеліра повного циклу:
 {money(work_cost)} грн
-• Відлив: {money(work_cost * 0.40)} грн
-• Ручна обробка: {money(work_cost * 0.30)} грн
-• Фінальне шліфування: {money(work_cost * 0.30)} грн
+• Відлив: {money(work_cost * 0.60)} грн
+• Ручна обробка: {money(work_cost * 0.25)} грн
+• Фінальне шліфування: {money(work_cost * 0.15)} грн
 
 Загальна знижка:
 -{money(total_discount)} грн
@@ -257,9 +257,9 @@ def calculate_wedding_rings(data):
         "inserts": inserts_text,
         "gold_cost": gold_cost,
         "work_cost": work_cost,
-        "casting_cost": work_cost * 0.40,
-        "manual_processing_cost": work_cost * 0.30,
-        "final_polishing_cost": work_cost * 0.30,
+        "casting_cost": work_cost * 0.60,
+        "manual_processing_cost": work_cost * 0.25,
+        "final_polishing_cost": work_cost * 0.15,
         "product_discount": product_discount,
         "base_discount": base_discount,
         "total_discount": total_discount,
