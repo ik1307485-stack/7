@@ -476,7 +476,7 @@ def render_client_receipt(receipt_data):
     items_html += subrow("Фінальне шліфування", receipt_data.get("final_polishing_cost", 0))
     items_html += '</div>'
     items_html += row("Загальна знижка", receipt_data.get("total_discount", 0), negative=True)
-    items_html += row("Упаковка", receipt_data.get("packaging", 0))
+    #items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
     items_html += row("Покриття", receipt_data.get("coating_cost", 0))
     stone_cost_label = (
