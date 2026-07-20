@@ -350,9 +350,9 @@ def calculate_ring(data):
 
 Робота ювеліра повного циклу:
 {money(work_cost)} грн
-• Відлив: {money(work_cost * 0.40)} грн
-• Ручна обробка: {money(work_cost * 0.30)} грн
-• Фінальне шліфування: {money(work_cost * 0.30)} грн
+• Відлив: {money(work_cost * 0.60)} грн
+• Ручна обробка: {money(work_cost * 0.25)} грн
+• Фінальне шліфування: {money(work_cost * 0.15)} грн
 
 Загальна знижка:
 -{money(total_discount)} грн
@@ -485,7 +485,9 @@ def render_client_receipt(receipt_data):
         else "Каміння"
     )
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
-    items_html += row("Доставка", receipt_data.get("delivery", 0))
+    items_html += row("Загальна знижка", receipt_data.get("total_discount", 0), negative=True)
+
+    #items_html += row("Доставка", receipt_data.get("delivery", 0))
 
 
     receipt_number = datetime.now().strftime("%d%m%y-%H%M")
