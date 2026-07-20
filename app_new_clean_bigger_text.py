@@ -187,15 +187,9 @@ def calculate_wedding_rings(data):
 
 Робота ювеліра повного циклу:
 {money(work_cost)} грн
-• Відлив (40%): {money(work_cost * 0.40)} грн
-• Ручна обробка (30%): {money(work_cost * 0.30)} грн
-• Фінальне шліфування (30%): {money(work_cost * 0.30)} грн
-
-Знижка за виробом:
--{money(product_discount)} грн
-
-Основна знижка:
--{money(base_discount)} грн
+• Відлив: {money(work_cost * 0.40)} грн
+• Ручна обробка: {money(work_cost * 0.30)} грн
+• Фінальне шліфування: {money(work_cost * 0.30)} грн
 
 Загальна знижка:
 -{money(total_discount)} грн
@@ -356,15 +350,9 @@ def calculate_ring(data):
 
 Робота ювеліра повного циклу:
 {money(work_cost)} грн
-• Відлив (40%): {money(work_cost * 0.40)} грн
-• Ручна обробка (30%): {money(work_cost * 0.30)} грн
-• Фінальне шліфування (30%): {money(work_cost * 0.30)} грн
-
-Знижка за виробом:
--{money(product_discount)} грн
-
-Основна знижка:
--{money(base_discount)} грн
+• Відлив: {money(work_cost * 0.40)} грн
+• Ручна обробка: {money(work_cost * 0.30)} грн
+• Фінальне шліфування: {money(work_cost * 0.30)} грн
 
 Загальна знижка:
 -{money(total_discount)} грн
@@ -471,10 +459,10 @@ def render_client_receipt(receipt_data):
             f'</div>'
         )
 
-    def subrow(label, value, percent):
+    def subrow(label, value):
         return (
             '<div class="receipt-subrow">'
-            f'<span>{safe(label)} <small>{percent}%</small></span>'
+            f'<span>{safe(label)}</span>'
             f'<strong>{money(value)} грн</strong>'
             '</div>'
         )
@@ -483,13 +471,10 @@ def render_client_receipt(receipt_data):
     items_html += row("Вартість дорогоцінного металу", receipt_data.get("gold_cost", 0))
     items_html += '<div class="work-group">'
     items_html += row("Робота ювеліра повного циклу", receipt_data.get("work_cost", 0))
-    items_html += subrow("Відлив", receipt_data.get("casting_cost", 0), 40)
-    items_html += subrow("Ручна обробка", receipt_data.get("manual_processing_cost", 0), 30)
-    items_html += subrow("Фінальне шліфування", receipt_data.get("final_polishing_cost", 0), 30)
+    items_html += subrow("Відлив", receipt_data.get("casting_cost", 0))
+    items_html += subrow("Ручна обробка", receipt_data.get("manual_processing_cost", 0))
+    items_html += subrow("Фінальне шліфування", receipt_data.get("final_polishing_cost", 0))
     items_html += '</div>'
-    items_html += row("Знижка за виробом", receipt_data.get("product_discount", 0), negative=True)
-    if receipt_data.get("base_discount_enabled"):
-        items_html += row("Основна знижка", receipt_data.get("base_discount", 0), negative=True)
     items_html += row("Загальна знижка", receipt_data.get("total_discount", 0), negative=True)
     items_html += row("Упаковка", receipt_data.get("packaging", 0))
     items_html += row("Гравіювання", receipt_data.get("engraving", 0))
