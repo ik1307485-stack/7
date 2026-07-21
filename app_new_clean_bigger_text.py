@@ -147,7 +147,8 @@ def calculate_wedding_rings(data):
     total_discount = product_discount + base_discount
     work_after_discount = work_cost - product_discount
     gold_cost = total_weight * GOLD_PRICE
-    gold_cost_375 = total_weight * GOLD_PRICE_375
+    weight_375 = total_weight * 0.93
+    gold_cost_375 = weight_375 * GOLD_PRICE_375
 
     # 9 400 грн додаються лише до відображуваної загальної знижки,
     # але не віднімаються від суми до сплати.
@@ -253,6 +254,8 @@ def calculate_wedding_rings(data):
 """
         if show_375:
             client_text += f"""
+Середня вага виробу у 375 пробі: {weight_375:.1f} г
+
 Середня вартість виробу у 375 пробі:
 • з натуральними діамантами:
 {money100(variant_totals_375["Натуральні діаманти"])} грн 💎
@@ -270,6 +273,8 @@ def calculate_wedding_rings(data):
         if show_375:
             total_375 = base_total_without_stones_375
             client_text += f"""
+Середня вага виробу у 375 пробі: {weight_375:.1f} г
+
 Середня вартість виробу у 375 пробі:
 {money100(total_375)} грн 💎
 """
@@ -343,7 +348,8 @@ def calculate_ring(data):
     total_discount = product_discount + base_discount
     work_after_discount = work_cost - product_discount
     gold_cost = total_weight * GOLD_PRICE
-    gold_cost_375 = total_weight * GOLD_PRICE_375
+    weight_375 = total_weight * 0.93
+    gold_cost_375 = weight_375 * GOLD_PRICE_375
 
     # 9 400 грн додаються лише до відображуваної загальної знижки,
     # але не віднімаються від суми до сплати.
@@ -444,6 +450,8 @@ def calculate_ring(data):
 
     if show_375:
         client_text += f"""
+Середня вага виробу у 375 пробі: {weight_375:.1f} г
+
 Середня вартість виробу у 375 пробі:
 • з натуральними діамантами:
 {money100(variant_totals_375["Натуральні діаманти"])} грн 💎
@@ -463,9 +471,9 @@ def calculate_ring(data):
         "inserts": inserts_text,
         "gold_cost": gold_cost,
         "work_cost": work_cost,
-        "casting_cost": work_cost * 0.40,
-        "manual_processing_cost": work_cost * 0.30,
-        "final_polishing_cost": work_cost * 0.30,
+        "casting_cost": work_cost * 0.60,
+        "manual_processing_cost": work_cost * 0.25,
+        "final_polishing_cost": work_cost * 0.15,
         "product_discount": product_discount,
         "base_discount": base_discount,
         "total_discount": total_discount,
@@ -506,7 +514,7 @@ def render_client_receipt(receipt_data):
         return (
             f'<div class="{css_class}">'
             f'<span>{safe(label)}</span>'
-            f'<strong>{sign}{money(value)} грн</strong>'
+            f'<strong>{sign}{money100(value)} грн</strong>'
             f'</div>'
         )
 
@@ -514,7 +522,7 @@ def render_client_receipt(receipt_data):
         return (
             '<div class="receipt-subrow">'
             f'<span>{safe(label)}</span>'
-            f'<strong>{money(value)} грн</strong>'
+            f'<strong>{money100(value)} грн</strong>'
             '</div>'
         )
 
@@ -735,7 +743,7 @@ def render_client_receipt(receipt_data):
           <div class="spec"><span>Розмір</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
           <div class="spec"><span>Ширина</span><strong>{safe(receipt_data.get("width", ""))}</strong></div>
           <div class="spec"><span>Покриття</span><strong>{safe(receipt_data.get("coating", ""))}</strong></div>
-          <div class="spec"><span>Вага</span><strong>{safe(receipt_data.get("weight", ""))}</strong></div>
+          <div class="spec"><span>Вага виробу</span><strong>{safe(receipt_data.get("weight", ""))}</strong></div>
           <div class="spec"><span>Вставки</span><strong>{safe(receipt_data.get("inserts", "не додано"))}</strong></div>
         </div>
 
@@ -744,7 +752,7 @@ def render_client_receipt(receipt_data):
 
         <div class="total">
           <div class="total-label">До сплати</div>
-          <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0))) if receipt_data.get("has_stones") else money(receipt_data.get("total", 0))} грн</div>
+          <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} грн</div>
         </div>
 
         <div class="footer">
