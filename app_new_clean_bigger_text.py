@@ -731,7 +731,7 @@ def render_client_receipt(receipt_data):
         </div>
 
         <div class="specs">
-          <div class="spec"><span>Золото</span><strong>{safe(receipt_data.get("gold_type", ""))}</strong></div>
+          <div class="spec"><span>Дорогоцінний метал</span><strong>{safe(receipt_data.get("gold_type", ""))}</strong></div>
           <div class="spec"><span>Розмір</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
           <div class="spec"><span>Ширина</span><strong>{safe(receipt_data.get("width", ""))}</strong></div>
           <div class="spec"><span>Покриття</span><strong>{safe(receipt_data.get("coating", ""))}</strong></div>
