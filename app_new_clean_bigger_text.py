@@ -521,7 +521,7 @@ def render_client_receipt(receipt_data):
     items_html = ""
     items_html += row("Вартість дорогоцінного металу", receipt_data.get("gold_cost", 0))
     items_html += '<div class="work-group">'
-    items_html += row("Робота ювеліра повного циклу", receipt_data.get("work_cost", 0))
+    items_html += row("Робота ювелірів повного циклу", receipt_data.get("work_cost", 0))
     items_html += subrow("Відлив", receipt_data.get("casting_cost", 0))
     items_html += subrow("Ручна обробка", receipt_data.get("manual_processing_cost", 0))
     items_html += subrow("Фінальне шліфування", receipt_data.get("final_polishing_cost", 0))
