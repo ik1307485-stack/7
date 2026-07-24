@@ -194,8 +194,10 @@ def calculate_material_variant(
 def build_material_price_block(material_result, variant_totals=None):
     material_name = material_result["material_name"]
     weight = material_result["weight"]
+
     if variant_totals:
-        return f"""\\n{material_name} 💍
+        return f"""
+{material_name} 💍
 Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
@@ -206,7 +208,9 @@ def build_material_price_block(material_result, variant_totals=None):
 • з муасанітами:
 {money100(variant_totals["Муасаніти"])} грн 💎
 """
-    return f"""\\n{material_name} 💍
+
+    return f"""
+{material_name} 💍
 Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
