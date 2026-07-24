@@ -9,6 +9,17 @@ LOGO_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA3gAAAUsCAYAAABlo
 
 GOLD_PRICE = 4500
 GOLD_PRICE_375 = 2900
+GOLD_PRICE_750 = 5800
+
+PLATINUM_METAL_USD_PER_GRAM = 110
+PLATINUM_WORK_USD_PER_GRAM = 140
+
+MATERIAL_OPTIONS = [
+    "Золото 375 проби",
+    "Золото 585 проби",
+    "Золото 750 проби",
+    "Платина 950 проби",
+]
 WORK_VYSHYVANKA = 3100
 WORK_INDIVIDUAL = 3000
 WORK_RING = 6100
@@ -94,6 +105,115 @@ def make_inserts_text(main_size, main_qty, small_size, small_qty):
     return "; ".join(parts) if parts else "не додано"
 
 
+def material_weight(base_weight, material, item_count):
+    """Перерахунок ваги відносно золота 585 проби."""
+    if material == "Золото 375 проби":
+        return base_weight * 0.93
+    if material == "Золото 750 проби":
+        return base_weight + (1.0 if item_count == 2 else 0.5)
+    if material == "Платина 950 проби":
+        return base_weight * 1.60
+    return base_weight
+
+
+def material_prices(material, product_type, design, usd_rate):
+    """Повертає ціну металу та роботи за 1 грам у гривнях."""
+    if material == "Золото 375 проби":
+        metal_per_gram = GOLD_PRICE_375
+        work_per_gram = get_work_price(product_type, design)
+    elif material == "Золото 750 проби":
+        metal_per_gram = GOLD_PRICE_750
+        if product_type == "Каблучка":
+            work_per_gram = 7320
+        elif design == "Вишиванка":
+            work_per_gram = 3720
+        else:
+            work_per_gram = 3600
+    elif material == "Платина 950 проби":
+        metal_per_gram = PLATINUM_METAL_USD_PER_GRAM * usd_rate
+        work_per_gram = PLATINUM_WORK_USD_PER_GRAM * usd_rate
+    else:
+        metal_per_gram = GOLD_PRICE
+        work_per_gram = get_work_price(product_type, design)
+    return metal_per_gram, work_per_gram
+
+
+def material_display_name(material, gold_type):
+    if material == "Платина 950 проби":
+        return "Платина 950 проби"
+    assay = material.split()[1]
+    return f"{gold_type} золото {assay} проби"
+
+
+def calculate_material_variant(
+    *,
+    material,
+    base_weight,
+    item_count,
+    product_type,
+    design,
+    gold_type,
+    usd_rate,
+    discount_percent,
+    packaging,
+    engraving,
+    coating_uah,
+    delivery,
+    stones_uah,
+):
+    weight = material_weight(base_weight, material, item_count)
+    metal_per_gram, work_per_gram = material_prices(
+        material, product_type, design, usd_rate
+    )
+    metal_cost = weight * metal_per_gram
+    work_cost = weight * work_per_gram
+    product_discount = work_cost * (discount_percent / 100)
+    base_total = (
+        metal_cost
+        + work_cost
+        + packaging
+        + engraving
+        + coating_uah
+        + delivery
+        - product_discount
+    )
+    return {
+        "material": material,
+        "material_name": material_display_name(material, gold_type),
+        "weight": weight,
+        "metal_per_gram": metal_per_gram,
+        "work_per_gram": work_per_gram,
+        "metal_cost": metal_cost,
+        "work_cost": work_cost,
+        "product_discount": product_discount,
+        "base_total": base_total,
+        "total": base_total + stones_uah,
+    }
+
+
+def build_material_price_block(material_result, variant_totals=None):
+    material_name = material_result["material_name"]
+    weight = material_result["weight"]
+    if variant_totals:
+        return f"""\\n{material_name} 💍
+Середня вага виробу: {weight:.1f} г
+
+Середня вартість виробу:
+• з натуральними діамантами:
+{money100(variant_totals["Натуральні діаманти"])} грн 💎
+• з лабораторними діамантами:
+{money100(variant_totals["Лабораторні діаманти"])} грн 💎
+• з муасанітами:
+{money100(variant_totals["Муасаніти"])} грн 💎
+"""
+    return f"""\\n{material_name} 💍
+Середня вага виробу: {weight:.1f} г
+
+Середня вартість виробу:
+{money100(material_result["total"])} грн 💎
+"""
+
+
 def calculate_wedding_rings(data):
     usd_rate = get_usd_rate()
 
@@ -107,6 +227,11 @@ def calculate_wedding_rings(data):
 
     design = data["design"]
     gold_type = data.get("gold_type", "Біле")
+    selected_materials = data.get("selected_materials") or ["Золото 585 проби"]
+    receipt_material = data.get("receipt_material") or selected_materials[0]
+    if receipt_material not in selected_materials:
+        receipt_material = selected_materials[0]
+
     coating_option = data.get("coating_option", "Без покриття")
     coating_usd = COATING_OPTIONS.get(coating_option, 0)
     coating_name = get_coating_name(coating_option)
@@ -116,7 +241,6 @@ def calculate_wedding_rings(data):
     discount_percent = data["discount_percent"]
     base_discount_enabled = data.get("base_discount_enabled", False)
     base_discount = BASE_DISCOUNT if base_discount_enabled else 0
-    show_375 = data.get("show_375", False)
 
     ring_stone_enabled = data["ring_stone_enabled"]
     ring_stone_size = data["ring_stone_size"]
@@ -139,50 +263,71 @@ def calculate_wedding_rings(data):
         weight_2 = 0
         weight_note_2 = "Друга обручка не додана"
 
-    total_weight = weight_1 + weight_2
+    base_weight = weight_1 + weight_2
+    item_count = 2 if use_second_ring else 1
 
-    work_per_gram = get_work_price("Пара обручок", design)
-    work_cost = total_weight * work_per_gram
-    product_discount = work_cost * (discount_percent / 100)
-    total_discount = product_discount + base_discount
-    work_after_discount = work_cost - product_discount
-    gold_cost = total_weight * GOLD_PRICE
-    weight_375 = total_weight * 0.93
-    gold_cost_375 = weight_375 * GOLD_PRICE_375
-
-    # 9 400 грн додаються лише до відображуваної загальної знижки,
-    # але не віднімаються від суми до сплати.
-    base_total_without_stones = (
-        gold_cost + work_cost + PACKAGING + engraving + coating_uah + delivery
-        - product_discount
-    )
-    base_total_without_stones_375 = (
-        gold_cost_375 + work_cost + PACKAGING + engraving + coating_uah + delivery
-        - product_discount
+    stones_usd, stones_uah = get_stone_cost_by_type(
+        selected_stone_type, ring_stone_size, ring_stone_qty, usd_rate
     )
 
-    stones_usd, stones_uah = get_stone_cost_by_type(selected_stone_type, ring_stone_size, ring_stone_qty, usd_rate)
-    total = base_total_without_stones + stones_uah
+    material_results = {}
+    material_variant_totals = {}
+    for material in selected_materials:
+        result = calculate_material_variant(
+            material=material,
+            base_weight=base_weight,
+            item_count=item_count,
+            product_type="Пара обручок",
+            design=design,
+            gold_type=gold_type,
+            usd_rate=usd_rate,
+            discount_percent=discount_percent,
+            packaging=PACKAGING,
+            engraving=engraving,
+            coating_uah=coating_uah,
+            delivery=delivery,
+            stones_uah=stones_uah,
+        )
+        material_results[material] = result
 
-    title = "Індивідуальна модель обручок «Вишиванка» ⚜️" if design == "Вишиванка" else "Індивідуальна модель обручок ⚜️"
-    coating_client = coating_name
-    inserts_text = f"{ring_stone_size} - {ring_stone_qty} шт" if ring_stone_qty > 0 else "не додано"
+        variants = {}
+        for stone_type in STONE_PRICES_USD:
+            _, stone_variant_uah = get_stone_cost_by_type(
+                stone_type, ring_stone_size, ring_stone_qty, usd_rate
+            )
+            variants[stone_type] = result["base_total"] + stone_variant_uah
+        material_variant_totals[material] = variants
 
-    second_weight_text = f"\n{weight_note_2}:\n{weight_2:.2f} г\n" if use_second_ring else ""
+    primary = material_results[receipt_material]
+    total_discount = primary["product_discount"] + base_discount
+
+    title = (
+        "Індивідуальна модель обручок «Вишиванка» ⚜️"
+        if design == "Вишиванка"
+        else "Індивідуальна модель обручок ⚜️"
+    )
+    inserts_text = (
+        f"{ring_stone_size} - {ring_stone_qty} шт"
+        if ring_stone_qty > 0
+        else "не додано"
+    )
+
     if use_second_ring:
         client_sizes_text = f"Розміри: {size_1:g} та {size_2:g}"
         client_width_text = f"Ширина: {width_1:g} мм та {width_2:g} мм"
+        second_weight_text = f"\\n{weight_note_2}:\\n{weight_2:.2f} г\\n"
     else:
         client_sizes_text = f"Розмір: {size_1:g}"
         client_width_text = f"Ширина: {width_1:g} мм"
+        second_weight_text = ""
 
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
 
 Тип виробу:
-Пара обручок
+{"Пара обручок" if use_second_ring else "Обручка"}
 
-Тип золота:
-{gold_type} золото 585 проби
+Дорогоцінний метал:
+{primary["material_name"]}
 
 Покриття вибране:
 {coating_option}
@@ -190,17 +335,20 @@ def calculate_wedding_rings(data):
 {weight_note_1}:
 {weight_1:.2f} г
 {second_weight_text}
-Загальна вага:
-{total_weight:.2f} г
+Базова вага у золоті 585 проби:
+{base_weight:.2f} г
+
+Вага для вибраного матеріалу:
+{primary["weight"]:.2f} г
 
 Вартість дорогоцінного металу:
-{money(gold_cost)} грн
+{money(primary["metal_cost"])} грн
 
-Робота ювеліра повного циклу:
-{money(work_cost)} грн
-• Відлив: {money(work_cost * 0.60)} грн
-• Ручна обробка: {money(work_cost * 0.25)} грн
-• Фінальне шліфування: {money(work_cost * 0.15)} грн
+Робота ювелірів повного циклу:
+{money(primary["work_cost"])} грн
+• Відлив: {money(primary["work_cost"] * 0.60)} грн
+• Ручна обробка: {money(primary["work_cost"] * 0.25)} грн
+• Фінальне шліфування: {money(primary["work_cost"] * 0.15)} грн
 
 Загальна знижка:
 -{money(total_discount)} грн
@@ -222,78 +370,36 @@ def calculate_wedding_rings(data):
 
 =====================
 ДО СПЛАТИ:
-{money(total)} грн
+{money(primary["total"])} грн
 """
 
     client_text = f"""{title}
 
-{gold_type} золото 585 проби 💍
 {client_sizes_text}
 {client_width_text}
-Покриття: {coating_client}
-Середня вага виробу: {total_weight:.1f} г
+Покриття: {coating_name}
+Вставки: {inserts_text}
 """
 
-    if ring_stone_qty > 0:
-        variant_totals = {}
-        variant_totals_375 = {}
-        for stone_type in STONE_PRICES_USD.keys():
-            _, stone_uah_variant = get_stone_cost_by_type(stone_type, ring_stone_size, ring_stone_qty, usd_rate)
-            variant_totals[stone_type] = base_total_without_stones + stone_uah_variant
-            variant_totals_375[stone_type] = base_total_without_stones_375 + stone_uah_variant
-        selected_total = variant_totals[selected_stone_type]
-        client_text += f"""Вставки: {inserts_text}
-
-Середня вартість виробу у 585 пробі:
-• з натуральними діамантами:
-{money100(variant_totals["Натуральні діаманти"])} грн 💎
-• з лабораторними діамантами:
-{money100(variant_totals["Лабораторні діаманти"])} грн 💎
-• з муасанітами:
-{money100(variant_totals["Муасаніти"])} грн 💎
-"""
-        if show_375:
-            client_text += f"""
-Середня вага виробу у 375 пробі: {weight_375:.1f} г
-
-Середня вартість виробу у 375 пробі:
-• з натуральними діамантами:
-{money100(variant_totals_375["Натуральні діаманти"])} грн 💎
-• з лабораторними діамантами:
-{money100(variant_totals_375["Лабораторні діаманти"])} грн 💎
-• з муасанітами:
-{money100(variant_totals_375["Муасаніти"])} грн 💎
-"""
-        poster_price = money100(selected_total)
-    else:
-        client_text += f"""
-Середня вартість виробу у 585 пробі:
-{money100(total)} грн 💎
-"""
-        if show_375:
-            total_375 = base_total_without_stones_375
-            client_text += f"""
-Середня вага виробу у 375 пробі: {weight_375:.1f} г
-
-Середня вартість виробу у 375 пробі:
-{money100(total_375)} грн 💎
-"""
-        poster_price = money100(total)
+    for material in selected_materials:
+        result = material_results[material]
+        variants = material_variant_totals[material] if ring_stone_qty > 0 else None
+        client_text += build_material_price_block(result, variants)
 
     receipt_data = {
         "title": title.replace("⚜️", "").strip(),
-        "gold_type": f"{gold_type} золото 585 проби",
+        "gold_type": primary["material_name"],
         "sizes": client_sizes_text.replace("Розміри: ", "").replace("Розмір: ", ""),
         "width": client_width_text.replace("Ширина: ", ""),
-        "coating": coating_client,
-        "weight": f"{total_weight:.1f} г",
+        "coating": coating_name,
+        "weight": f'{primary["weight"]:.1f} г',
         "inserts": inserts_text,
-        "gold_cost": gold_cost,
-        "work_cost": work_cost,
-        "casting_cost": work_cost * 0.60,
-        "manual_processing_cost": work_cost * 0.25,
-        "final_polishing_cost": work_cost * 0.15,
-        "product_discount": product_discount,
+        "gold_cost": primary["metal_cost"],
+        "work_cost": primary["work_cost"],
+        "casting_cost": primary["work_cost"] * 0.60,
+        "manual_processing_cost": primary["work_cost"] * 0.25,
+        "final_polishing_cost": primary["work_cost"] * 0.15,
+        "product_discount": primary["product_discount"],
         "base_discount": base_discount,
         "total_discount": total_discount,
         "base_discount_enabled": base_discount_enabled,
@@ -302,15 +408,15 @@ def calculate_wedding_rings(data):
         "coating_cost": coating_uah,
         "stones_cost": stones_uah,
         "delivery": delivery,
-        "total": total,
+        "total": primary["total"],
         "has_stones": ring_stone_qty > 0,
         "selected_stone_type": selected_stone_type if ring_stone_qty > 0 else "Без каміння",
-        "selected_total": variant_totals[selected_stone_type] if ring_stone_qty > 0 else total,
-        "variant_totals": {
-            "Натуральні діаманти": variant_totals["Натуральні діаманти"] if ring_stone_qty > 0 else total,
-            "Лабораторні діаманти": variant_totals["Лабораторні діаманти"] if ring_stone_qty > 0 else total,
-            "Муасаніти": variant_totals["Муасаніти"] if ring_stone_qty > 0 else total,
-        },
+        "selected_total": (
+            material_variant_totals[receipt_material][selected_stone_type]
+            if ring_stone_qty > 0
+            else primary["total"]
+        ),
+        "variant_totals": material_variant_totals[receipt_material],
     }
     return technical_text, client_text, receipt_data
 
@@ -322,6 +428,11 @@ def calculate_ring(data):
     width = data["width"]
     thickness = data["thickness"]
     gold_type = data.get("gold_type", "Біле")
+    selected_materials = data.get("selected_materials") or ["Золото 585 проби"]
+    receipt_material = data.get("receipt_material") or selected_materials[0]
+    if receipt_material not in selected_materials:
+        receipt_material = selected_materials[0]
+
     coating_option = data.get("coating_option", "Без покриття")
     coating_usd = COATING_OPTIONS.get(coating_option, 0)
     coating_name = get_coating_name(coating_option)
@@ -331,7 +442,7 @@ def calculate_ring(data):
     discount_percent = data["discount_percent"]
     base_discount_enabled = data.get("base_discount_enabled", False)
     base_discount = BASE_DISCOUNT if base_discount_enabled else 0
-    show_375 = data.get("show_375", False)
+
     main_size = data["main_size"]
     main_qty = data["main_qty"]
     small_size = data["small_size"]
@@ -340,35 +451,51 @@ def calculate_ring(data):
     manual_weight = data.get("manual_weight", 0)
 
     auto_weight = calc_weight(size, width, thickness)
-    total_weight = manual_weight if manual_weight > 0 else auto_weight
+    base_weight = manual_weight if manual_weight > 0 else auto_weight
     weight_note = "Вага задана вручну" if manual_weight > 0 else "Вага розрахована автоматично"
 
-    work_cost = total_weight * get_work_price("Каблучка")
-    product_discount = work_cost * (discount_percent / 100)
-    total_discount = product_discount + base_discount
-    work_after_discount = work_cost - product_discount
-    gold_cost = total_weight * GOLD_PRICE
-    weight_375 = total_weight * 0.93
-    gold_cost_375 = weight_375 * GOLD_PRICE_375
-
-    # 9 400 грн додаються лише до відображуваної загальної знижки,
-    # але не віднімаються від суми до сплати.
-    base_total_without_stones = (
-        gold_cost + work_cost + PACKAGING + engraving + coating_uah + delivery
-        - product_discount
+    main_usd, main_uah = get_stone_cost_by_type(
+        selected_stone_type, main_size, main_qty, usd_rate
     )
-    base_total_without_stones_375 = (
-        gold_cost_375 + work_cost + PACKAGING + engraving + coating_uah + delivery
-        - product_discount
+    small_usd, small_uah = get_stone_cost_by_type(
+        selected_stone_type, small_size, small_qty, usd_rate
     )
-
-    main_usd, main_uah = get_stone_cost_by_type(selected_stone_type, main_size, main_qty, usd_rate)
-    small_usd, small_uah = get_stone_cost_by_type(selected_stone_type, small_size, small_qty, usd_rate)
     stones_usd = main_usd + small_usd
     stones_uah = main_uah + small_uah
-    total = base_total_without_stones + stones_uah
 
-    coating_client = coating_name
+    material_results = {}
+    material_variant_totals = {}
+    for material in selected_materials:
+        result = calculate_material_variant(
+            material=material,
+            base_weight=base_weight,
+            item_count=1,
+            product_type="Каблучка",
+            design=None,
+            gold_type=gold_type,
+            usd_rate=usd_rate,
+            discount_percent=discount_percent,
+            packaging=PACKAGING,
+            engraving=engraving,
+            coating_uah=coating_uah,
+            delivery=delivery,
+            stones_uah=stones_uah,
+        )
+        material_results[material] = result
+
+        variants = {}
+        for stone_type in STONE_PRICES_USD:
+            _, main_variant = get_stone_cost_by_type(
+                stone_type, main_size, main_qty, usd_rate
+            )
+            _, small_variant = get_stone_cost_by_type(
+                stone_type, small_size, small_qty, usd_rate
+            )
+            variants[stone_type] = result["base_total"] + main_variant + small_variant
+        material_variant_totals[material] = variants
+
+    primary = material_results[receipt_material]
+    total_discount = primary["product_discount"] + base_discount
     inserts_text = make_inserts_text(main_size, main_qty, small_size, small_qty)
 
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
@@ -376,26 +503,29 @@ def calculate_ring(data):
 Тип виробу:
 Каблучка
 
-Тип золота:
-{gold_type} золото 585 проби
+Дорогоцінний метал:
+{primary["material_name"]}
 
 Покриття вибране:
 {coating_option}
 
 {weight_note}:
-{total_weight:.2f} г
+{base_weight:.2f} г
 
-Загальна вага:
-{total_weight:.2f} г
+Базова вага у золоті 585 проби:
+{base_weight:.2f} г
+
+Вага для вибраного матеріалу:
+{primary["weight"]:.2f} г
 
 Вартість дорогоцінного металу:
-{money(gold_cost)} грн
+{money(primary["metal_cost"])} грн
 
-Робота ювеліра повного циклу:
-{money(work_cost)} грн
-• Відлив: {money(work_cost * 0.60)} грн
-• Ручна обробка: {money(work_cost * 0.25)} грн
-• Фінальне шліфування: {money(work_cost * 0.15)} грн
+Робота ювелірів повного циклу:
+{money(primary["work_cost"])} грн
+• Відлив: {money(primary["work_cost"] * 0.60)} грн
+• Ручна обробка: {money(primary["work_cost"] * 0.25)} грн
+• Фінальне шліфування: {money(primary["work_cost"] * 0.15)} грн
 
 Загальна знижка:
 -{money(total_discount)} грн
@@ -417,64 +547,36 @@ def calculate_ring(data):
 
 =====================
 ДО СПЛАТИ:
-{money(total)} грн
+{money(primary["total"])} грн
 """
 
-    variant_totals = {}
-    variant_totals_375 = {}
-    for stone_type in STONE_PRICES_USD.keys():
-        _, main_uah_variant = get_stone_cost_by_type(stone_type, main_size, main_qty, usd_rate)
-        _, small_uah_variant = get_stone_cost_by_type(stone_type, small_size, small_qty, usd_rate)
-        stones_variant = main_uah_variant + small_uah_variant
-        variant_totals[stone_type] = base_total_without_stones + stones_variant
-        variant_totals_375[stone_type] = base_total_without_stones_375 + stones_variant
-
-    selected_total = variant_totals[selected_stone_type]
     client_text = f"""Каблучка індивідуального дизайну ⚜️
 
-{gold_type} золото 585 проби 💍
 Розмір: {size:g}
 Ширина: {width:g} мм
-Покриття: {coating_client}
-Середня вага виробу: {total_weight:.1f} г
+Покриття: {coating_name}
 Вставки: {inserts_text}
-
-Середня вартість виробу у 585 пробі:
-• з натуральними діамантами:
-{money100(variant_totals["Натуральні діаманти"])} грн 💎
-• з лабораторними діамантами:
-{money100(variant_totals["Лабораторні діаманти"])} грн 💎
-• з муасанітами:
-{money100(variant_totals["Муасаніти"])} грн 💎
 """
-
-    if show_375:
-        client_text += f"""
-Середня вага виробу у 375 пробі: {weight_375:.1f} г
-
-Середня вартість виробу у 375 пробі:
-• з натуральними діамантами:
-{money100(variant_totals_375["Натуральні діаманти"])} грн 💎
-• з лабораторними діамантами:
-{money100(variant_totals_375["Лабораторні діаманти"])} грн 💎
-• з муасанітами:
-{money100(variant_totals_375["Муасаніти"])} грн 💎
-"""
+    has_stones = (main_qty + small_qty) > 0
+    for material in selected_materials:
+        result = material_results[material]
+        variants = material_variant_totals[material] if has_stones else None
+        client_text += build_material_price_block(result, variants)
 
     receipt_data = {
         "title": "Каблучка індивідуального дизайну",
-        "gold_type": f"{gold_type} золото 585 проби",
+        "gold_type": primary["material_name"],
         "sizes": f"{size:g}",
         "width": f"{width:g} мм",
-        "coating": coating_client,
-        "weight": f"{total_weight:.1f} г",
+        "coating": coating_name,
+        "weight": f'{primary["weight"]:.1f} г',
         "inserts": inserts_text,
-        "gold_cost": gold_cost,
-        "work_cost": work_cost,
-        "casting_cost": work_cost * 0.60,
-        "manual_processing_cost": work_cost * 0.25,
-        "final_polishing_cost": work_cost * 0.15,
-        "product_discount": product_discount,
+        "gold_cost": primary["metal_cost"],
+        "work_cost": primary["work_cost"],
+        "casting_cost": primary["work_cost"] * 0.60,
+        "manual_processing_cost": primary["work_cost"] * 0.25,
+        "final_polishing_cost": primary["work_cost"] * 0.15,
+        "product_discount": primary["product_discount"],
         "base_discount": base_discount,
         "total_discount": total_discount,
         "base_discount_enabled": base_discount_enabled,
@@ -483,18 +585,17 @@ def calculate_ring(data):
         "coating_cost": coating_uah,
         "stones_cost": stones_uah,
         "delivery": delivery,
-        "total": total,
-        "has_stones": (main_qty + small_qty) > 0,
-        "selected_stone_type": selected_stone_type if (main_qty + small_qty) > 0 else "Без каміння",
-        "selected_total": selected_total if (main_qty + small_qty) > 0 else total,
-        "variant_totals": {
-            "Натуральні діаманти": variant_totals["Натуральні діаманти"],
-            "Лабораторні діаманти": variant_totals["Лабораторні діаманти"],
-            "Муасаніти": variant_totals["Муасаніти"],
-        },
+        "total": primary["total"],
+        "has_stones": has_stones,
+        "selected_stone_type": selected_stone_type if has_stones else "Без каміння",
+        "selected_total": (
+            material_variant_totals[receipt_material][selected_stone_type]
+            if has_stones
+            else primary["total"]
+        ),
+        "variant_totals": material_variant_totals[receipt_material],
     }
     return technical_text, client_text, receipt_data
-
 
 
 def render_client_receipt(receipt_data):
@@ -836,8 +937,21 @@ elif st.session_state.screen == "wedding":
     with left:
         st.subheader("Дані для прорахунку")
         design = st.selectbox("Дизайн", ["Вишиванка", "Індивідуальний"])
-        gold_type = st.selectbox("Тип золота", GOLD_TYPES, index=2, key="wedding_gold_type")
-        show_375 = st.checkbox("375 проба", value=False, key="wedding_show_375")
+        gold_type = st.selectbox("Колір золота", GOLD_TYPES, index=2, key="wedding_gold_type")
+        selected_materials = st.multiselect(
+            "Матеріали для прорахунку",
+            MATERIAL_OPTIONS,
+            default=["Золото 585 проби"],
+            key="wedding_selected_materials",
+        )
+        if not selected_materials:
+            st.warning("Оберіть хоча б один матеріал.")
+            selected_materials = ["Золото 585 проби"]
+        receipt_material = st.selectbox(
+            "Матеріал для технічного розрахунку та чеку",
+            selected_materials,
+            key="wedding_receipt_material",
+        )
         st.markdown("### Обручка 1")
         size_1 = st.number_input("Розмір 1", min_value=1.0, value=16.0, step=0.5)
         width_1 = st.number_input("Ширина 1, мм", min_value=0.1, value=5.0, step=0.1)
@@ -881,7 +995,7 @@ elif st.session_state.screen == "wedding":
             st.session_state.wedding_manual_weight_1 = 0.0
             st.session_state.wedding_manual_weight_2 = 0.0
             technical_text, client_text, receipt_data = calculate_wedding_rings({
-                "design": design, "gold_type": gold_type, "show_375": show_375, "coating_option": coating_option, "use_second_ring": use_second_ring,
+                "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
@@ -908,7 +1022,7 @@ elif st.session_state.screen == "wedding":
             st.session_state.wedding_manual_weight_1 = manual_weight_1_right
             st.session_state.wedding_manual_weight_2 = manual_weight_2_right
             technical_text, client_text, receipt_data = calculate_wedding_rings({
-                "design": design, "gold_type": gold_type, "show_375": show_375, "coating_option": coating_option, "use_second_ring": use_second_ring,
+                "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
@@ -932,9 +1046,22 @@ elif st.session_state.screen == "ring":
     left, right = st.columns([1, 1.4])
     with left:
         st.subheader("Дані для прорахунку")
-        st.info("Для каблучки робота завжди рахується по 6100 грн/г. Дизайн тут не вибирається.")
-        gold_type = st.selectbox("Тип золота", GOLD_TYPES, index=2, key="ring_gold_type")
-        show_375 = st.checkbox("375 проба", value=False, key="ring_show_375")
+        st.info("Тариф роботи залежить від вибраного матеріалу. Для золота 585/375 — 6100 грн/г, для золота 750 — 7320 грн/г, для платини — 140 $/г.")
+        gold_type = st.selectbox("Колір золота", GOLD_TYPES, index=2, key="ring_gold_type")
+        selected_materials = st.multiselect(
+            "Матеріали для прорахунку",
+            MATERIAL_OPTIONS,
+            default=["Золото 585 проби"],
+            key="ring_selected_materials",
+        )
+        if not selected_materials:
+            st.warning("Оберіть хоча б один матеріал.")
+            selected_materials = ["Золото 585 проби"]
+        receipt_material = st.selectbox(
+            "Матеріал для технічного розрахунку та чеку",
+            selected_materials,
+            key="ring_receipt_material",
+        )
         size = st.number_input("Розмір", min_value=1.0, value=16.0, step=0.5)
         width = st.number_input("Ширина, мм", min_value=0.1, value=2.5, step=0.1)
         thickness = st.number_input("Товщина, мм", min_value=0.1, value=1.2, step=0.1)
@@ -966,7 +1093,7 @@ elif st.session_state.screen == "ring":
         if calculate_btn:
             st.session_state.ring_manual_weight = 0.0
             technical_text, client_text, receipt_data = calculate_ring({
-                "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "show_375": show_375, "coating_option": coating_option, "manual_weight": 0.0,
+                "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
@@ -981,7 +1108,7 @@ elif st.session_state.screen == "ring":
         if st.button("ПЕРЕРАХУВАТИ ПО ВАГІ", use_container_width=True, key="recalculate_ring_weight"):
             st.session_state.ring_manual_weight = manual_weight_right
             technical_text, client_text, receipt_data = calculate_ring({
-                "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "show_375": show_375, "coating_option": coating_option, "manual_weight": manual_weight_right,
+                "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
