@@ -219,7 +219,7 @@ def build_material_price_block(material_result, variant_totals=None):
 
 
 def calculate_wedding_rings(data):
-    usd_rate = get_usd_rate()
+    usd_rate = float(data.get("usd_rate", get_usd_rate()))
 
     size_1 = data["size_1"]
     width_1 = data["width_1"]
@@ -426,7 +426,7 @@ def calculate_wedding_rings(data):
 
 
 def calculate_ring(data):
-    usd_rate = get_usd_rate()
+    usd_rate = float(data.get("usd_rate", get_usd_rate()))
 
     size = data["size"]
     width = data["width"]
@@ -990,6 +990,30 @@ elif st.session_state.screen == "wedding":
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
+
+        auto_usd_rate = get_usd_rate()
+        usd_col1, usd_col2 = st.columns([1.7, 1])
+        with usd_col1:
+            use_manual_usd_rate = st.checkbox(
+                "Свій курс USD",
+                value=False,
+                key="wedding_use_manual_usd_rate",
+            )
+        with usd_col2:
+            if use_manual_usd_rate:
+                usd_rate = st.number_input(
+                    "Курс USD",
+                    min_value=1.0,
+                    value=float(auto_usd_rate),
+                    step=0.1,
+                    format="%.2f",
+                    key="wedding_manual_usd_rate",
+                    label_visibility="collapsed",
+                )
+            else:
+                usd_rate = auto_usd_rate
+                st.caption(f"USD {usd_rate:.2f}")
+
         calculate_btn = st.button("РОЗРАХУВАТИ", use_container_width=True)
 
     with right:
@@ -1002,7 +1026,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
             })
@@ -1029,7 +1053,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
             })
@@ -1090,6 +1114,30 @@ elif st.session_state.screen == "ring":
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="ring_coating_option")
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
+
+        auto_usd_rate = get_usd_rate()
+        usd_col1, usd_col2 = st.columns([1.7, 1])
+        with usd_col1:
+            use_manual_usd_rate = st.checkbox(
+                "Свій курс USD",
+                value=False,
+                key="ring_use_manual_usd_rate",
+            )
+        with usd_col2:
+            if use_manual_usd_rate:
+                usd_rate = st.number_input(
+                    "Курс USD",
+                    min_value=1.0,
+                    value=float(auto_usd_rate),
+                    step=0.1,
+                    format="%.2f",
+                    key="ring_manual_usd_rate",
+                    label_visibility="collapsed",
+                )
+            else:
+                usd_rate = auto_usd_rate
+                st.caption(f"USD {usd_rate:.2f}")
+
         calculate_btn = st.button("РОЗРАХУВАТИ", use_container_width=True)
 
     with right:
@@ -1100,7 +1148,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -1115,7 +1163,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
