@@ -201,6 +201,10 @@ def build_material_price_block(material_result, variant_totals=None):
 Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
+• з натуральними діамантами:
+{money100(variant_totals["Натуральні діаманти"])} грн 💎
+• з лабораторними діамантами:
+{money100(variant_totals["Лабораторні діаманти"])} грн 💎
 • з муасанітами:
 {money100(variant_totals["Муасаніти"])} грн 💎
 """
