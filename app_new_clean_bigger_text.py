@@ -191,7 +191,7 @@ def calculate_material_variant(
     }
 
 
-def build_material_price_block(material_result, variant_totals=None):
+def build_material_price_block(material_result, variant_totals=None, custom_client_price=0):
     material_name = material_result["material_name"]
     material = material_result.get("material", "")
     weight = material_result["weight"]
@@ -204,7 +204,7 @@ def build_material_price_block(material_result, variant_totals=None):
 
 Середня вартість виробу:
 • з муасанітами:
-{money100(variant_totals["Муасаніти"])} грн 💎
+{money100(variant_totals["Муасаніти"] + custom_client_price)} грн 💎
 """
 
     if variant_totals:
@@ -214,11 +214,11 @@ def build_material_price_block(material_result, variant_totals=None):
 
 Середня вартість виробу:
 • з натуральними діамантами:
-{money100(variant_totals["Натуральні діаманти"])} грн 💎
+{money100(variant_totals["Натуральні діаманти"] + custom_client_price)} грн 💎
 • з лабораторними діамантами:
-{money100(variant_totals["Лабораторні діаманти"])} грн 💎
+{money100(variant_totals["Лабораторні діаманти"] + custom_client_price)} грн 💎
 • з муасанітами:
-{money100(variant_totals["Муасаніти"])} грн 💎
+{money100(variant_totals["Муасаніти"] + custom_client_price)} грн 💎
 """
 
     return f"""
@@ -226,7 +226,7 @@ def build_material_price_block(material_result, variant_totals=None):
 Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
-{money100(material_result["total"])} грн 💎
+{money100(material_result["total"] + custom_client_price)} грн 💎
 """
 
 
@@ -345,6 +345,9 @@ def calculate_wedding_rings(data):
         client_width_text = f"Ширина: {width_1:g} мм"
         second_weight_text = ""
 
+    if custom_client_price > 0:
+        receipt_data["selected_total"] = receipt_data.get("selected_total", receipt_data["total"]) + custom_client_price
+
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
 
 Тип виробу:
@@ -408,13 +411,8 @@ def calculate_wedding_rings(data):
     for material in selected_materials:
         result = material_results[material]
         variants = material_variant_totals[material] if ring_stone_qty > 0 else None
-        client_text += build_material_price_block(result, variants)
+        client_text += build_material_price_block(result, variants, custom_client_price)
 
-    if custom_client_price > 0:
-        client_text += f"""
-Додаткова ціна:
-{money100(custom_client_price)} грн 💎
-"""
 
     receipt_data = {
         "title": title.replace("⚜️", "").strip(),
@@ -442,7 +440,7 @@ def calculate_wedding_rings(data):
             else stones_uah
         ),
         "delivery": delivery,
-        "total": primary["total"],
+        "total": primary["total"] + custom_client_price,
         "has_stones": ring_stone_qty > 0,
         "selected_stone_type": (
             "Муасаніти"
@@ -552,6 +550,9 @@ def calculate_ring(data):
     total_discount = primary["product_discount"] + base_discount
     inserts_text = make_inserts_text(main_size, main_qty, small_size, small_qty)
 
+    if custom_client_price > 0:
+        receipt_data["selected_total"] = receipt_data.get("selected_total", receipt_data["total"]) + custom_client_price
+
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
 
 Тип виробу:
@@ -615,13 +616,8 @@ def calculate_ring(data):
     for material in selected_materials:
         result = material_results[material]
         variants = material_variant_totals[material] if has_stones else None
-        client_text += build_material_price_block(result, variants)
+        client_text += build_material_price_block(result, variants, custom_client_price)
 
-    if custom_client_price > 0:
-        client_text += f"""
-Додаткова ціна:
-{money100(custom_client_price)} грн 💎
-"""
 
     receipt_data = {
         "title": "Каблучка індивідуального дизайну",
@@ -649,7 +645,7 @@ def calculate_ring(data):
             else stones_uah
         ),
         "delivery": delivery,
-        "total": primary["total"],
+        "total": primary["total"] + custom_client_price,
         "has_stones": has_stones,
         "selected_stone_type": (
             "Муасаніти"
