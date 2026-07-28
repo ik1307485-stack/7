@@ -345,9 +345,6 @@ def calculate_wedding_rings(data):
         client_width_text = f"Ширина: {width_1:g} мм"
         second_weight_text = ""
 
-    if custom_client_price > 0:
-        receipt_data["selected_total"] = receipt_data.get("selected_total", receipt_data["total"]) + custom_client_price
-
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
 
 Тип виробу:
@@ -448,11 +445,14 @@ def calculate_wedding_rings(data):
             else selected_stone_type if ring_stone_qty > 0 else "Без каміння"
         ),
         "selected_total": (
-            material_variant_totals[receipt_material]["Муасаніти"]
-            if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
-            else material_variant_totals[receipt_material][selected_stone_type]
-            if ring_stone_qty > 0
-            else primary["total"]
+            (
+                material_variant_totals[receipt_material]["Муасаніти"]
+                if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
+                else material_variant_totals[receipt_material][selected_stone_type]
+                if ring_stone_qty > 0
+                else primary["total"]
+            )
+            + custom_client_price
         ),
         "variant_totals": material_variant_totals[receipt_material],
     }
@@ -549,9 +549,6 @@ def calculate_ring(data):
     primary = material_results[receipt_material]
     total_discount = primary["product_discount"] + base_discount
     inserts_text = make_inserts_text(main_size, main_qty, small_size, small_qty)
-
-    if custom_client_price > 0:
-        receipt_data["selected_total"] = receipt_data.get("selected_total", receipt_data["total"]) + custom_client_price
 
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
 
@@ -653,11 +650,14 @@ def calculate_ring(data):
             else selected_stone_type if has_stones else "Без каміння"
         ),
         "selected_total": (
-            material_variant_totals[receipt_material]["Муасаніти"]
-            if receipt_material == "Золото 375 проби" and has_stones
-            else material_variant_totals[receipt_material][selected_stone_type]
-            if has_stones
-            else primary["total"]
+            (
+                material_variant_totals[receipt_material]["Муасаніти"]
+                if receipt_material == "Золото 375 проби" and has_stones
+                else material_variant_totals[receipt_material][selected_stone_type]
+                if has_stones
+                else primary["total"]
+            )
+            + custom_client_price
         ),
         "variant_totals": material_variant_totals[receipt_material],
     }
