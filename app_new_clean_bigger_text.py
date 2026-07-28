@@ -193,7 +193,19 @@ def calculate_material_variant(
 
 def build_material_price_block(material_result, variant_totals=None):
     material_name = material_result["material_name"]
+    material = material_result.get("material", "")
     weight = material_result["weight"]
+
+    # Для золота 375 проби у тексті для клієнта показуємо тільки муасаніт.
+    if material == "Золото 375 проби" and variant_totals:
+        return f"""
+{material_name} 💍
+Середня вага виробу: {weight:.1f} г
+
+Середня вартість виробу:
+• з муасанітами:
+{money100(variant_totals["Муасаніти"])} грн 💎
+"""
 
     if variant_totals:
         return f"""
@@ -220,6 +232,7 @@ def build_material_price_block(material_result, variant_totals=None):
 
 def calculate_wedding_rings(data):
     usd_rate = float(data.get("usd_rate", get_usd_rate()))
+    custom_client_price = float(data.get("custom_client_price", 0) or 0)
 
     size_1 = data["size_1"]
     width_1 = data["width_1"]
@@ -273,6 +286,9 @@ def calculate_wedding_rings(data):
     stones_usd, stones_uah = get_stone_cost_by_type(
         selected_stone_type, ring_stone_size, ring_stone_qty, usd_rate
     )
+    moissanite_stones_usd, moissanite_stones_uah = get_stone_cost_by_type(
+        "Муасаніти", ring_stone_size, ring_stone_qty, usd_rate
+    )
 
     material_results = {}
     material_variant_totals = {}
@@ -290,7 +306,11 @@ def calculate_wedding_rings(data):
             engraving=engraving,
             coating_uah=coating_uah,
             delivery=delivery,
-            stones_uah=stones_uah,
+            stones_uah=(
+                moissanite_stones_uah
+                if material == "Золото 375 проби"
+                else stones_uah
+            ),
         )
         material_results[material] = result
 
@@ -390,6 +410,12 @@ def calculate_wedding_rings(data):
         variants = material_variant_totals[material] if ring_stone_qty > 0 else None
         client_text += build_material_price_block(result, variants)
 
+    if custom_client_price > 0:
+        client_text += f"""
+Додаткова ціна:
+{money100(custom_client_price)} грн 💎
+"""
+
     receipt_data = {
         "title": title.replace("⚜️", "").strip(),
         "gold_type": primary["material_name"],
@@ -410,13 +436,23 @@ def calculate_wedding_rings(data):
         "packaging": PACKAGING,
         "engraving": engraving,
         "coating_cost": coating_uah,
-        "stones_cost": stones_uah,
+        "stones_cost": (
+            moissanite_stones_uah
+            if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
+            else stones_uah
+        ),
         "delivery": delivery,
         "total": primary["total"],
         "has_stones": ring_stone_qty > 0,
-        "selected_stone_type": selected_stone_type if ring_stone_qty > 0 else "Без каміння",
+        "selected_stone_type": (
+            "Муасаніти"
+            if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
+            else selected_stone_type if ring_stone_qty > 0 else "Без каміння"
+        ),
         "selected_total": (
-            material_variant_totals[receipt_material][selected_stone_type]
+            material_variant_totals[receipt_material]["Муасаніти"]
+            if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
+            else material_variant_totals[receipt_material][selected_stone_type]
             if ring_stone_qty > 0
             else primary["total"]
         ),
@@ -427,6 +463,7 @@ def calculate_wedding_rings(data):
 
 def calculate_ring(data):
     usd_rate = float(data.get("usd_rate", get_usd_rate()))
+    custom_client_price = float(data.get("custom_client_price", 0) or 0)
 
     size = data["size"]
     width = data["width"]
@@ -467,6 +504,15 @@ def calculate_ring(data):
     stones_usd = main_usd + small_usd
     stones_uah = main_uah + small_uah
 
+    moissanite_main_usd, moissanite_main_uah = get_stone_cost_by_type(
+        "Муасаніти", main_size, main_qty, usd_rate
+    )
+    moissanite_small_usd, moissanite_small_uah = get_stone_cost_by_type(
+        "Муасаніти", small_size, small_qty, usd_rate
+    )
+    moissanite_stones_usd = moissanite_main_usd + moissanite_small_usd
+    moissanite_stones_uah = moissanite_main_uah + moissanite_small_uah
+
     material_results = {}
     material_variant_totals = {}
     for material in selected_materials:
@@ -483,7 +529,11 @@ def calculate_ring(data):
             engraving=engraving,
             coating_uah=coating_uah,
             delivery=delivery,
-            stones_uah=stones_uah,
+            stones_uah=(
+                moissanite_stones_uah
+                if material == "Золото 375 проби"
+                else stones_uah
+            ),
         )
         material_results[material] = result
 
@@ -567,6 +617,12 @@ def calculate_ring(data):
         variants = material_variant_totals[material] if has_stones else None
         client_text += build_material_price_block(result, variants)
 
+    if custom_client_price > 0:
+        client_text += f"""
+Додаткова ціна:
+{money100(custom_client_price)} грн 💎
+"""
+
     receipt_data = {
         "title": "Каблучка індивідуального дизайну",
         "gold_type": primary["material_name"],
@@ -587,13 +643,23 @@ def calculate_ring(data):
         "packaging": PACKAGING,
         "engraving": engraving,
         "coating_cost": coating_uah,
-        "stones_cost": stones_uah,
+        "stones_cost": (
+            moissanite_stones_uah
+            if receipt_material == "Золото 375 проби" and has_stones
+            else stones_uah
+        ),
         "delivery": delivery,
         "total": primary["total"],
         "has_stones": has_stones,
-        "selected_stone_type": selected_stone_type if has_stones else "Без каміння",
+        "selected_stone_type": (
+            "Муасаніти"
+            if receipt_material == "Золото 375 проби" and has_stones
+            else selected_stone_type if has_stones else "Без каміння"
+        ),
         "selected_total": (
-            material_variant_totals[receipt_material][selected_stone_type]
+            material_variant_totals[receipt_material]["Муасаніти"]
+            if receipt_material == "Золото 375 проби" and has_stones
+            else material_variant_totals[receipt_material][selected_stone_type]
             if has_stones
             else primary["total"]
         ),
@@ -991,6 +1057,26 @@ elif st.session_state.screen == "wedding":
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
 
+        custom_col1, custom_col2 = st.columns([1.7, 1])
+        with custom_col1:
+            use_custom_client_price = st.checkbox(
+                "Додати свою ціну",
+                value=False,
+                key="wedding_use_custom_client_price",
+            )
+        with custom_col2:
+            if use_custom_client_price:
+                custom_client_price = st.number_input(
+                    "Своя ціна, грн",
+                    min_value=0.0,
+                    value=0.0,
+                    step=100.0,
+                    key="wedding_custom_client_price",
+                    label_visibility="collapsed",
+                )
+            else:
+                custom_client_price = 0.0
+
         auto_usd_rate = get_usd_rate()
         usd_col1, usd_col2 = st.columns([1.7, 1])
         with usd_col1:
@@ -1026,7 +1112,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
             })
@@ -1053,7 +1139,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
             })
@@ -1115,6 +1201,26 @@ elif st.session_state.screen == "ring":
         engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
 
+        custom_col1, custom_col2 = st.columns([1.7, 1])
+        with custom_col1:
+            use_custom_client_price = st.checkbox(
+                "Додати свою ціну",
+                value=False,
+                key="ring_use_custom_client_price",
+            )
+        with custom_col2:
+            if use_custom_client_price:
+                custom_client_price = st.number_input(
+                    "Своя ціна, грн",
+                    min_value=0.0,
+                    value=0.0,
+                    step=100.0,
+                    key="ring_custom_client_price",
+                    label_visibility="collapsed",
+                )
+            else:
+                custom_client_price = 0.0
+
         auto_usd_rate = get_usd_rate()
         usd_col1, usd_col2 = st.columns([1.7, 1])
         with usd_col1:
@@ -1148,7 +1254,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -1163,7 +1269,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
