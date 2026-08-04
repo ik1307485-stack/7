@@ -408,18 +408,93 @@ def calculate_wedding_rings(data):
 {money(primary["total"])} грн
 """
 
+    # Основний матеріал у тексті: 585 проба, якщо вона вибрана.
+    # В іншому випадку — матеріал, вибраний для чеку.
+    main_client_material = (
+        "Золото 585 проби"
+        if "Золото 585 проби" in selected_materials
+        else receipt_material
+    )
+    main_client_result = material_results[main_client_material]
+    main_client_variants = material_variant_totals[main_client_material]
+
     client_text = f"""{title}
 
+{main_client_result["material_name"]} ✨
 {client_sizes_text}
 {client_width_text}
-Покриття: {coating_name}
 Вставки: {inserts_text}
+Середня вага пари: {main_client_result["weight"]:.1f} г
+
 """
 
+    if ring_stone_qty > 0:
+        client_text += f"""Середня вартість пари:
+• з натуральними діамантами:
+{money100(main_client_variants["Натуральні діаманти"] + custom_client_price)} грн 💎
+• з лабораторними діамантами:
+{money100(main_client_variants["Лабораторні діаманти"] + custom_client_price)} грн 💎
+• з муасанітами:
+{money100(main_client_variants["Муасаніти"] + custom_client_price)} грн 💎
+"""
+    else:
+        client_text += f"""Середня вартість пари:
+{money100(main_client_result["total"] + custom_client_price)} грн 💎
+"""
+
+    # 375 проба показується окремим коротким блоком і тільки з муасанітами.
+    if "Золото 375 проби" in selected_materials:
+        result_375 = material_results["Золото 375 проби"]
+        variants_375 = material_variant_totals["Золото 375 проби"]
+        price_375 = (
+            variants_375["Муасаніти"]
+            if ring_stone_qty > 0
+            else result_375["total"]
+        )
+        client_text += f"""
+
+Середня вартість виробу у 375 пробі:
+Від {money100(price_375 + custom_client_price)} грн 💎
+"""
+
+    # Інші вибрані матеріали показуються після основного блоку.
     for material in selected_materials:
+        if material in {main_client_material, "Золото 375 проби"}:
+            continue
+
         result = material_results[material]
-        variants = material_variant_totals[material] if ring_stone_qty > 0 else None
-        client_text += build_material_price_block(result, variants, custom_client_price)
+        variants = material_variant_totals[material]
+
+        if material == "Платина 950 проби":
+            platinum_price = (
+                variants["Муасаніти"]
+                if ring_stone_qty > 0
+                else result["total"]
+            )
+            client_text += f"""
+
+Середня вартість виробу у платині 950 проби:
+Від {money100(platinum_price + custom_client_price)} грн 💎
+"""
+        elif ring_stone_qty > 0:
+            assay = material.split()[1]
+            client_text += f"""
+
+Середня вартість пари у {assay} пробі:
+• з натуральними діамантами:
+{money100(variants["Натуральні діаманти"] + custom_client_price)} грн 💎
+• з лабораторними діамантами:
+{money100(variants["Лабораторні діаманти"] + custom_client_price)} грн 💎
+• з муасанітами:
+{money100(variants["Муасаніти"] + custom_client_price)} грн 💎
+"""
+        else:
+            assay = material.split()[1]
+            client_text += f"""
+
+Середня вартість пари у {assay} пробі:
+{money100(result["total"] + custom_client_price)} грн 💎
+"""
 
 
     receipt_data = {
