@@ -88,6 +88,14 @@ DIAMOND_GRADATION_DISCLAIMER = (
 )
 
 
+GRADATION_MODEL_OPTIONS = [
+    "Обручки «Вишиванка»",
+    "Обручки індивідуального дизайну",
+    "Каблучка",
+    "Каблучка індивідуального дизайну",
+]
+
+
 def get_usd_rate():
     try:
         url = "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json"
@@ -1116,7 +1124,7 @@ def render_earring_diamond_gradation(
             <div class="dots"></div>
             <div class="grade-right">
                 <div class="pair-price">{pair_price_html}</div>
-                <div class="small-label">середня вартість за пару</div>
+                <div class="small-label">середня вартість виробу</div>
             </div>
         </div>
         """
@@ -1331,18 +1339,18 @@ def render_earring_diamond_gradation(
             <div class="spec-value">{html.escape(coating_name)}</div>
           </div>
           <div class="spec">
-            <div class="spec-label">Вага пари</div>
+            <div class="spec-label">Середня вага</div>
             <div class="spec-value">{pair_weight:.1f} г</div>
           </div>
         </div>
 
         <div class="info">
           Вказані вартості розраховані для круглої форми діаманта.<br>
-          Каратність зазначена за один камінь. У парі — два діаманти однакового розміру.
+          Каратність зазначена за один камінь. Розрахунок сформовано для двох діамантів однакового розміру.
         </div>
 
         <div class="gradation">
-          <div class="gradation-title">Градація середньої вартості пари</div>
+          <div class="gradation-title">Градація середньої вартості виробу</div>
           {rows_html}
         </div>
 
@@ -1417,7 +1425,7 @@ if st.session_state.screen == "start":
         st.button("Обручки", use_container_width=True, on_click=go_wedding)
         st.button("Каблучка", use_container_width=True, on_click=go_ring)
         st.button(
-            "Сережки — градація діамантів",
+            "Градація великих діамантів",
             use_container_width=True,
             on_click=go_earrings,
         )
@@ -1601,9 +1609,9 @@ elif st.session_state.screen == "wedding":
 
 elif st.session_state.screen == "earrings":
     st.button("← Назад", on_click=go_start)
-    st.title("Градація вартості сережок із діамантами")
+    st.title("Градація вартості виробу з діамантами")
     st.caption(
-        "Окремий клієнтський вивід для підняття середнього чека. "
+        "Окремий клієнтський вивід для обручок, каблучок і сережок. "
         "Менеджер обирає один тип діаманта, а програма формує готову картинку."
     )
 
@@ -1612,26 +1620,41 @@ elif st.session_state.screen == "earrings":
     with left:
         st.subheader("Дані для картинки")
 
-        model_name = st.text_input(
+        model_name = st.selectbox(
             "Назва моделі",
-            value="Сережки «Вишиванка»",
+            GRADATION_MODEL_OPTIONS,
+            index=0,
             key="earring_gradation_model",
         )
 
-        material_name = st.text_input(
+        gradation_gold_type = st.selectbox(
+            "Колір золота",
+            GOLD_TYPES,
+            index=2,
+            key="earring_gradation_gold_type",
+        )
+
+        gradation_material = st.selectbox(
             "Дорогоцінний метал",
-            value="Біле золото 585 проби",
+            MATERIAL_OPTIONS,
+            index=1,
             key="earring_gradation_material",
         )
 
-        coating_name = st.text_input(
-            "Покриття",
-            value="Родій",
-            key="earring_gradation_coating",
+        material_name = material_display_name(
+            gradation_material,
+            gradation_gold_type,
         )
 
+        gradation_coating_option = st.selectbox(
+            "Покриття",
+            list(COATING_OPTIONS.keys()),
+            key="earring_gradation_coating",
+        )
+        coating_name = get_coating_name(gradation_coating_option)
+
         pair_weight = st.number_input(
-            "Середня вага пари, г",
+            "Середня вага виробу / пари, г",
             min_value=0.1,
             value=5.0,
             step=0.1,
@@ -1641,13 +1664,13 @@ elif st.session_state.screen == "earrings":
 
         st.markdown("### Розрахунок вартості")
         st.info(
-            "Введіть повну базову вартість пари сережок БЕЗ двох основних діамантів. "
+            "Введіть повну базову вартість виробу БЕЗ двох основних діамантів. "
             "У цю суму вже можуть входити метал, робота, упаковка, покриття, "
             "знижка та будь-які додаткові витрати."
         )
 
         base_pair_price = st.number_input(
-            "Базова вартість пари без основних діамантів, грн",
+            "Базова вартість виробу без основних діамантів, грн",
             min_value=0.0,
             value=30000.0,
             step=100.0,
