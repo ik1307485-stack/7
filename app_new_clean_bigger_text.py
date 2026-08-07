@@ -28,6 +28,14 @@ BASE_DISCOUNT = 9400
 K = 13
 
 GOLD_TYPES = ["Червоне", "Лимонне", "Біле", "Рожеве"]
+
+STONE_SELECTION_OPTIONS = [
+    "Без каміння",
+    "Натуральні діаманти",
+    "Лабораторні діаманти",
+    "Муасаніти",
+]
+
 COATING_OPTIONS = {
     "Без покриття": 0,
     "Родій 50$": 50,
@@ -133,7 +141,8 @@ def get_work_price(product_type, design=None):
 
 
 def get_stone_cost_by_type(stone_type, stone_size, qty, usd_rate):
-    if qty <= 0:
+    # Каміння є повністю опціональним.
+    if qty <= 0 or stone_type == "Без каміння" or stone_type not in STONE_PRICES_USD:
         return 0, 0
     price_usd = STONE_PRICES_USD[stone_type][stone_size]
     total_usd = price_usd * qty
@@ -312,8 +321,12 @@ def calculate_wedding_rings(data):
 
     ring_stone_enabled = data["ring_stone_enabled"]
     ring_stone_size = data["ring_stone_size"]
-    ring_stone_qty = data["ring_stone_qty"] if ring_stone_enabled else 0
-    selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
+    selected_stone_type = data.get("selected_stone_type", "Без каміння")
+    ring_stone_qty = (
+        data["ring_stone_qty"]
+        if ring_stone_enabled and selected_stone_type != "Без каміння"
+        else 0
+    )
 
     manual_weight_1 = data.get("manual_weight_1", 0)
     manual_weight_2 = data.get("manual_weight_2", 0)
@@ -609,7 +622,12 @@ def calculate_ring(data):
     main_qty = data["main_qty"]
     small_size = data["small_size"]
     small_qty = data["small_qty"]
-    selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
+    selected_stone_type = data.get("selected_stone_type", "Без каміння")
+
+    if selected_stone_type == "Без каміння":
+        main_qty = 0
+        small_qty = 0
+
     manual_weight = data.get("manual_weight", 0)
 
     auto_weight = calc_weight(size, width, thickness)
@@ -1473,10 +1491,14 @@ elif st.session_state.screen == "wedding":
         ring_stone_qty = st.number_input("Кількість діамантів", min_value=0, value=0, step=1, disabled=not ring_stone_enabled)
         selected_stone_type = st.selectbox(
             "Яке каміння обрав клієнт?",
-            list(STONE_PRICES_USD.keys()),
+            STONE_SELECTION_OPTIONS,
+            index=0,
             disabled=not ring_stone_enabled,
             key="wedding_selected_stone_type",
         )
+
+        if not ring_stone_enabled:
+            selected_stone_type = "Без каміння"
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
@@ -1714,15 +1736,35 @@ elif st.session_state.screen == "earrings":
 
     with right:
         st.subheader("💎 Картинка для клієнта")
-        render_earring_diamond_gradation(
-            model_name=model_name,
-            material_name=material_name,
-            coating_name=coating_name,
-            pair_weight=pair_weight,
-            diamond_type=diamond_type,
-            base_pair_price=base_pair_price,
-            usd_rate=gradation_usd_rate,
+        st.caption(
+            "Градація діамантів не рахується автоматично. "
+            "Вона формується тільки після натискання окремої кнопки."
         )
+
+        generate_gradation = st.button(
+            "СФОРМУВАТИ ГРАДАЦІЮ ДІАМАНТІВ",
+            use_container_width=True,
+            key="generate_diamond_gradation",
+        )
+
+        if generate_gradation:
+            st.session_state.gradation_payload = {
+                "model_name": model_name,
+                "material_name": material_name,
+                "coating_name": coating_name,
+                "pair_weight": pair_weight,
+                "diamond_type": diamond_type,
+                "base_pair_price": base_pair_price,
+                "usd_rate": gradation_usd_rate,
+            }
+
+        gradation_payload = st.session_state.get("gradation_payload")
+        if gradation_payload:
+            render_earring_diamond_gradation(**gradation_payload)
+        else:
+            st.info(
+                "Заповніть дані та натисніть «СФОРМУВАТИ ГРАДАЦІЮ ДІАМАНТІВ»."
+            )
 
 elif st.session_state.screen == "ring":
     st.button("← Назад", on_click=go_start)
@@ -1757,9 +1799,14 @@ elif st.session_state.screen == "ring":
         small_qty = st.number_input("Малі діаманти — к-сть", min_value=0, value=0, step=1)
         selected_stone_type = st.selectbox(
             "Яке каміння обрав клієнт?",
-            list(STONE_PRICES_USD.keys()),
+            STONE_SELECTION_OPTIONS,
+            index=0,
             key="ring_selected_stone_type",
         )
+
+        if selected_stone_type == "Без каміння":
+            main_qty = 0
+            small_qty = 0
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
