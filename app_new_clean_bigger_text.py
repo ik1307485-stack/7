@@ -28,14 +28,6 @@ BASE_DISCOUNT = 9400
 K = 13
 
 GOLD_TYPES = ["Червоне", "Лимонне", "Біле", "Рожеве"]
-
-STONE_SELECTION_OPTIONS = [
-    "Без каміння",
-    "Натуральні діаманти",
-    "Лабораторні діаманти",
-    "Муасаніти",
-]
-
 COATING_OPTIONS = {
     "Без покриття": 0,
     "Родій 50$": 50,
@@ -57,51 +49,6 @@ STONE_PRICES_USD = {
     "Лабораторні діаманти": {"1 мм": 7, "1.25 мм": 10, "1.5 мм": 15, "1.75 мм": 30, "2 мм": 30, "2.5 мм": 60, "3 мм": 140, "3.5 мм": 210, "4 мм": 390},
     "Муасаніти": {"1 мм": 5, "1.25 мм": 7, "1.5 мм": 9, "1.75 мм": 14, "2 мм": 16, "2.5 мм": 30, "3 мм": 60, "3.5 мм": 104, "4 мм": 154},
 }
-
-
-# Окрема градація вартості великих круглих діамантів для сережок.
-# Ціна вказана за ОДИН камінь у доларах.
-EARRING_DIAMOND_GRADATION_USD = {
-    "Натуральні прозорі": [
-        ("0.30 ct", 850),
-        ("0.50 ct", 1600),
-        ("0.80 ct", 3100),
-        ("1.00 ct", 4700),
-        ("1.50 ct", 15000),
-        ("2.00 ct", 21500),
-    ],
-    "Лабораторні прозорі": [
-        ("0.30 ct", 230),
-        ("0.50 ct", 500),
-        ("0.80 ct", 800),
-        ("1.00 ct", 1000),
-        ("1.50 ct", 1300),
-        ("2.00 ct", None),
-    ],
-    "Натуральні чорні": [
-        ("0.24 ct", 210),
-        ("0.35 ct", 280),
-        ("0.50 ct", 500),
-        ("0.80 ct", 750),
-        ("1.00 ct", 850),
-        ("1.50 ct", None),
-        ("2.00 ct", 1400),
-    ],
-}
-
-DIAMOND_GRADATION_DISCLAIMER = (
-    "Дані щодо вартості є середніми. Точна вартість ювелірного виробу "
-    "залежить від характеристик обраного діаманту та фактичної ваги "
-    "дорогоцінного металу."
-)
-
-
-GRADATION_MODEL_OPTIONS = [
-    "Обручки «Вишиванка»",
-    "Обручки індивідуального дизайну",
-    "Каблучка",
-    "Каблучка індивідуального дизайну",
-]
 
 
 def get_usd_rate():
@@ -141,8 +88,7 @@ def get_work_price(product_type, design=None):
 
 
 def get_stone_cost_by_type(stone_type, stone_size, qty, usd_rate):
-    # Каміння є повністю опціональним.
-    if qty <= 0 or stone_type == "Без каміння" or stone_type not in STONE_PRICES_USD:
+    if qty <= 0:
         return 0, 0
     price_usd = STONE_PRICES_USD[stone_type][stone_size]
     total_usd = price_usd * qty
@@ -321,12 +267,8 @@ def calculate_wedding_rings(data):
 
     ring_stone_enabled = data["ring_stone_enabled"]
     ring_stone_size = data["ring_stone_size"]
-    selected_stone_type = data.get("selected_stone_type", "Без каміння")
-    ring_stone_qty = (
-        data["ring_stone_qty"]
-        if ring_stone_enabled and selected_stone_type != "Без каміння"
-        else 0
-    )
+    ring_stone_qty = data["ring_stone_qty"] if ring_stone_enabled else 0
+    selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
 
     manual_weight_1 = data.get("manual_weight_1", 0)
     manual_weight_2 = data.get("manual_weight_2", 0)
@@ -486,7 +428,6 @@ def calculate_wedding_rings(data):
 
 """
 
-    # Варіанти з камінням показуємо ТІЛЬКИ якщо менеджер реально додав каміння.
     if ring_stone_qty > 0:
         client_text += f"""Середня вартість пари:
 • з натуральними діамантами:
@@ -498,25 +439,22 @@ def calculate_wedding_rings(data):
 """
     else:
         client_text += f"""Середня вартість пари:
-{money100(main_client_result["total"] + custom_client_price)} грн
+{money100(main_client_result["total"] + custom_client_price)} грн 💎
 """
 
-    # 375 проба: якщо каміння є — тільки муасаніт; якщо каміння немає — звичайна ціна без каміння.
+    # 375 проба показується окремим коротким блоком і тільки з муасанітами.
     if "Золото 375 проби" in selected_materials:
         result_375 = material_results["Золото 375 проби"]
         variants_375 = material_variant_totals["Золото 375 проби"]
-
-        if ring_stone_qty > 0:
-            client_text += f"""
-
-Середня вартість виробу у 375 пробі:
-Від {money100(variants_375["Муасаніти"] + custom_client_price)} грн 💎
-"""
-        else:
-            client_text += f"""
+        price_375 = (
+            variants_375["Муасаніти"]
+            if ring_stone_qty > 0
+            else result_375["total"]
+        )
+        client_text += f"""
 
 Середня вартість виробу у 375 пробі:
-{money100(result_375["total"] + custom_client_price)} грн
+Від {money100(price_375 + custom_client_price)} грн 💎
 """
 
     # Інші вибрані матеріали показуються після основного блоку.
@@ -528,23 +466,19 @@ def calculate_wedding_rings(data):
         variants = material_variant_totals[material]
 
         if material == "Платина 950 проби":
-            if ring_stone_qty > 0:
-                client_text += f"""
+            platinum_price = (
+                variants["Муасаніти"]
+                if ring_stone_qty > 0
+                else result["total"]
+            )
+            client_text += f"""
 
 Середня вартість виробу у платині 950 проби:
-Від {money100(variants["Муасаніти"] + custom_client_price)} грн 💎
+Від {money100(platinum_price + custom_client_price)} грн 💎
 """
-            else:
-                client_text += f"""
-
-Середня вартість виробу у платині 950 проби:
-{money100(result["total"] + custom_client_price)} грн
-"""
-        else:
+        elif ring_stone_qty > 0:
             assay = material.split()[1]
-
-            if ring_stone_qty > 0:
-                client_text += f"""
+            client_text += f"""
 
 Середня вартість пари у {assay} пробі:
 • з натуральними діамантами:
@@ -554,11 +488,12 @@ def calculate_wedding_rings(data):
 • з муасанітами:
 {money100(variants["Муасаніти"] + custom_client_price)} грн 💎
 """
-            else:
-                client_text += f"""
+        else:
+            assay = material.split()[1]
+            client_text += f"""
 
 Середня вартість пари у {assay} пробі:
-{money100(result["total"] + custom_client_price)} грн
+{money100(result["total"] + custom_client_price)} грн 💎
 """
 
 
@@ -645,12 +580,7 @@ def calculate_ring(data):
     main_qty = data["main_qty"]
     small_size = data["small_size"]
     small_qty = data["small_qty"]
-    selected_stone_type = data.get("selected_stone_type", "Без каміння")
-
-    if selected_stone_type == "Без каміння":
-        main_qty = 0
-        small_qty = 0
-
+    selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
     manual_weight = data.get("manual_weight", 0)
 
     auto_weight = calc_weight(size, width, thickness)
@@ -778,7 +708,7 @@ def calculate_ring(data):
 Покриття: {coating_name}
 Вставки: {inserts_text}
 """
-    has_stones = (main_qty + small_qty) > 0 and selected_stone_type != "Без каміння"
+    has_stones = (main_qty + small_qty) > 0
     for material in selected_materials:
         result = material_results[material]
         variants = material_variant_totals[material] if has_stones else None
@@ -1133,302 +1063,6 @@ def render_client_receipt(receipt_data):
     components.html(receipt_html, height=1120, scrolling=True)
 
 
-
-def render_earring_diamond_gradation(
-    *,
-    model_name,
-    material_name,
-    coating_name,
-    pair_weight,
-    diamond_type,
-    base_pair_price,
-    usd_rate,
-):
-    """Окрема картинка з градацією повної вартості пари сережок."""
-    rows = EARRING_DIAMOND_GRADATION_USD.get(diamond_type, [])
-
-    rows_html = ""
-    for carat, one_stone_usd in rows:
-        if one_stone_usd is None:
-            pair_price_html = '<span class="clarify">Вартість уточнюється</span>'
-        else:
-            # Два однакові діаманти + введена менеджером базова ціна пари без діамантів.
-            final_pair_price = base_pair_price + (one_stone_usd * 2 * usd_rate)
-            pair_price_html = f'{money100(final_pair_price)} грн'
-
-        rows_html += f"""
-        <div class="grade-row">
-            <div class="grade-left">
-                <div class="carat">{html.escape(carat)}</div>
-                <div class="small-label">за 1 камінь</div>
-            </div>
-            <div class="dots"></div>
-            <div class="grade-right">
-                <div class="pair-price">{pair_price_html}</div>
-                <div class="small-label">середня вартість виробу</div>
-            </div>
-        </div>
-        """
-
-    card_html = f"""
-    <!DOCTYPE html>
-    <html lang="uk">
-    <head>
-      <meta charset="UTF-8">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-      <style>
-        * {{ box-sizing: border-box; }}
-        body {{
-            margin: 0;
-            padding: 18px;
-            background: #eee9e1;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #151515;
-        }}
-        .card {{
-            width: 100%;
-            max-width: 760px;
-            margin: 0 auto;
-            min-height: 980px;
-            background:
-                radial-gradient(circle at 12% 15%, rgba(182,151,111,.12), transparent 28%),
-                radial-gradient(circle at 90% 85%, rgba(182,151,111,.10), transparent 30%),
-                linear-gradient(180deg, #f7f3ed 0%, #efe8de 100%);
-            border: 1px solid rgba(70,58,45,.16);
-            border-radius: 22px;
-            padding: 38px 52px 34px;
-            box-shadow: 0 18px 55px rgba(46,37,28,.14);
-            position: relative;
-            overflow: hidden;
-        }}
-        .card::before {{
-            content: "";
-            position: absolute;
-            inset: 18px;
-            border: 1px solid rgba(99,77,51,.12);
-            border-radius: 15px;
-            pointer-events: none;
-        }}
-        .logo {{
-            text-align: center;
-            margin-bottom: 16px;
-            position: relative;
-            z-index: 2;
-        }}
-        .logo img {{
-            width: 72px;
-            height: 72px;
-            object-fit: contain;
-        }}
-        .brand {{
-            text-align: center;
-            letter-spacing: 5px;
-            font-family: Georgia, serif;
-            font-size: 15px;
-            margin-bottom: 34px;
-        }}
-        .title {{
-            text-align: center;
-            font-family: Georgia, serif;
-            font-size: 35px;
-            line-height: 1.14;
-            font-weight: 500;
-            margin: 0;
-        }}
-        .subtitle {{
-            text-align: center;
-            margin-top: 12px;
-            font-size: 14px;
-            letter-spacing: 2.4px;
-            text-transform: uppercase;
-            color: #806d58;
-        }}
-        .diamond-type {{
-            text-align: center;
-            margin-top: 8px;
-            font-size: 16px;
-            font-weight: 600;
-        }}
-        .specs {{
-            margin: 32px auto 27px;
-            max-width: 590px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            border-top: 1px solid rgba(80,65,48,.28);
-            border-bottom: 1px solid rgba(80,65,48,.28);
-            padding: 17px 0;
-        }}
-        .spec {{
-            text-align: center;
-            padding: 0 12px;
-            border-right: 1px solid rgba(80,65,48,.19);
-        }}
-        .spec:last-child {{ border-right: none; }}
-        .spec-label {{
-            font-size: 10px;
-            letter-spacing: 1.8px;
-            text-transform: uppercase;
-            color: #8a7761;
-            margin-bottom: 7px;
-        }}
-        .spec-value {{
-            font-family: Georgia, serif;
-            font-size: 15px;
-            line-height: 1.25;
-        }}
-        .info {{
-            text-align: center;
-            font-size: 12px;
-            line-height: 1.55;
-            color: #665b4e;
-            margin-bottom: 24px;
-        }}
-        .gradation {{
-            max-width: 620px;
-            margin: 0 auto;
-        }}
-        .gradation-title {{
-            font-family: Georgia, serif;
-            font-size: 19px;
-            text-align: center;
-            margin-bottom: 14px;
-        }}
-        .grade-row {{
-            display: grid;
-            grid-template-columns: 115px 1fr 235px;
-            align-items: end;
-            gap: 12px;
-            padding: 12px 2px;
-            border-bottom: 1px solid rgba(94,75,54,.18);
-        }}
-        .grade-row:last-child {{ border-bottom: none; }}
-        .carat {{
-            font-family: Georgia, serif;
-            font-size: 20px;
-        }}
-        .dots {{
-            border-bottom: 1px dotted rgba(75,61,45,.48);
-            margin-bottom: 11px;
-        }}
-        .grade-right {{ text-align: right; }}
-        .pair-price {{
-            font-family: Georgia, serif;
-            font-size: 21px;
-            font-weight: 600;
-            white-space: nowrap;
-        }}
-        .clarify {{
-            font-family: Arial, sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            color: #866f58;
-            text-transform: uppercase;
-            letter-spacing: .6px;
-        }}
-        .small-label {{
-            font-size: 9px;
-            margin-top: 3px;
-            color: #91816f;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        .disclaimer {{
-            max-width: 620px;
-            margin: 28px auto 0;
-            padding-top: 18px;
-            border-top: 1px solid rgba(80,65,48,.24);
-            text-align: center;
-            color: #776a5b;
-            font-size: 11px;
-            line-height: 1.55;
-        }}
-        .actions {{
-            width: 100%;
-            max-width: 760px;
-            margin: 14px auto 0;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }}
-        button {{
-            border: 0;
-            border-radius: 10px;
-            padding: 13px 16px;
-            background: #25211d;
-            color: #fff;
-            font-weight: 700;
-            cursor: pointer;
-        }}
-      </style>
-    </head>
-    <body>
-      <div id="diamond-card" class="card">
-        <div class="logo"><img src="{LOGO_DATA_URL}" alt="Lana & Lona"></div>
-        <div class="brand">LANA &amp; LONA</div>
-
-        <h1 class="title">{html.escape(model_name)}</h1>
-        <div class="subtitle">Індивідуальна модель</div>
-        <div class="diamond-type">{html.escape(diamond_type)} діаманти</div>
-
-        <div class="specs">
-          <div class="spec">
-            <div class="spec-label">Матеріал</div>
-            <div class="spec-value">{html.escape(material_name)}</div>
-          </div>
-          <div class="spec">
-            <div class="spec-label">Покриття</div>
-            <div class="spec-value">{html.escape(coating_name)}</div>
-          </div>
-          <div class="spec">
-            <div class="spec-label">Середня вага</div>
-            <div class="spec-value">{pair_weight:.1f} г</div>
-          </div>
-        </div>
-
-        <div class="info">
-          Вказані вартості розраховані для круглої форми діаманта.<br>
-          Каратність зазначена за один камінь. Розрахунок сформовано для двох діамантів однакового розміру.
-        </div>
-
-        <div class="gradation">
-          <div class="gradation-title">Градація середньої вартості виробу</div>
-          {rows_html}
-        </div>
-
-        <div class="disclaimer">{html.escape(DIAMOND_GRADATION_DISCLAIMER)}</div>
-      </div>
-
-      <div class="actions">
-        <button onclick="downloadCard('png')">ЗАВАНТАЖИТИ PNG</button>
-        <button onclick="downloadCard('jpg')">ЗАВАНТАЖИТИ JPG</button>
-      </div>
-
-      <script>
-        async function downloadCard(format) {{
-          const card = document.getElementById('diamond-card');
-          const canvas = await html2canvas(card, {{
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#f7f3ed'
-          }});
-          const link = document.createElement('a');
-          if (format === 'jpg') {{
-            link.download = 'lana_lona_diamond_gradation.jpg';
-            link.href = canvas.toDataURL('image/jpeg', 0.96);
-          }} else {{
-            link.download = 'lana_lona_diamond_gradation.png';
-            link.href = canvas.toDataURL('image/png');
-          }}
-          link.click();
-        }}
-      </script>
-    </body>
-    </html>
-    """
-
-    components.html(card_html, height=1160, scrolling=True)
-
-
 st.set_page_config(page_title="Калькулятор Lana & Lona", layout="wide")
 
 if "screen" not in st.session_state:
@@ -1447,10 +1081,6 @@ def go_ring():
     st.session_state.screen = "ring"
 
 
-def go_earrings():
-    st.session_state.screen = "earrings"
-
-
 st.markdown("""
 <style>
 .main-title {text-align:center; font-size:34px; font-weight:700; margin-top:40px;}
@@ -1465,11 +1095,6 @@ if st.session_state.screen == "start":
     with col:
         st.button("Обручки", use_container_width=True, on_click=go_wedding)
         st.button("Каблучка", use_container_width=True, on_click=go_ring)
-        st.button(
-            "Градація великих діамантів",
-            use_container_width=True,
-            on_click=go_earrings,
-        )
 
 elif st.session_state.screen == "wedding":
     st.button("← Назад", on_click=go_start)
@@ -1514,14 +1139,10 @@ elif st.session_state.screen == "wedding":
         ring_stone_qty = st.number_input("Кількість діамантів", min_value=0, value=0, step=1, disabled=not ring_stone_enabled)
         selected_stone_type = st.selectbox(
             "Яке каміння обрав клієнт?",
-            STONE_SELECTION_OPTIONS,
-            index=0,
+            list(STONE_PRICES_USD.keys()),
             disabled=not ring_stone_enabled,
             key="wedding_selected_stone_type",
         )
-
-        if not ring_stone_enabled:
-            selected_stone_type = "Без каміння"
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
@@ -1651,144 +1272,6 @@ elif st.session_state.screen == "wedding":
         st.subheader("🧾 Чек для клієнта")
         render_client_receipt(st.session_state.get("receipt_data"))
 
-
-elif st.session_state.screen == "earrings":
-    st.button("← Назад", on_click=go_start)
-    st.title("Градація вартості виробу з діамантами")
-    st.caption(
-        "Окремий клієнтський вивід для обручок, каблучок і сережок. "
-        "Менеджер обирає один тип діаманта, а програма формує готову картинку."
-    )
-
-    left, right = st.columns([1, 1.35])
-
-    with left:
-        st.subheader("Дані для картинки")
-
-        model_name = st.selectbox(
-            "Назва моделі",
-            GRADATION_MODEL_OPTIONS,
-            index=0,
-            key="earring_gradation_model",
-        )
-
-        gradation_gold_type = st.selectbox(
-            "Колір золота",
-            GOLD_TYPES,
-            index=2,
-            key="earring_gradation_gold_type",
-        )
-
-        gradation_material = st.selectbox(
-            "Дорогоцінний метал",
-            MATERIAL_OPTIONS,
-            index=1,
-            key="earring_gradation_material",
-        )
-
-        material_name = material_display_name(
-            gradation_material,
-            gradation_gold_type,
-        )
-
-        gradation_coating_option = st.selectbox(
-            "Покриття",
-            list(COATING_OPTIONS.keys()),
-            key="earring_gradation_coating",
-        )
-        coating_name = get_coating_name(gradation_coating_option)
-
-        pair_weight = st.number_input(
-            "Середня вага виробу / пари, г",
-            min_value=0.1,
-            value=5.0,
-            step=0.1,
-            format="%.1f",
-            key="earring_gradation_weight",
-        )
-
-        st.markdown("### Розрахунок вартості")
-        st.info(
-            "Введіть повну базову вартість виробу БЕЗ двох основних діамантів. "
-            "У цю суму вже можуть входити метал, робота, упаковка, покриття, "
-            "знижка та будь-які додаткові витрати."
-        )
-
-        base_pair_price = st.number_input(
-            "Базова вартість виробу без основних діамантів, грн",
-            min_value=0.0,
-            value=30000.0,
-            step=100.0,
-            key="earring_gradation_base_price",
-        )
-
-        diamond_type = st.selectbox(
-            "Тип діаманта для градації",
-            list(EARRING_DIAMOND_GRADATION_USD.keys()),
-            key="earring_gradation_type",
-        )
-
-        auto_usd_rate = get_usd_rate()
-        usd_col1, usd_col2 = st.columns([1.7, 1])
-        with usd_col1:
-            manual_rate = st.checkbox(
-                "Свій курс USD",
-                value=False,
-                key="earring_gradation_manual_rate",
-            )
-        with usd_col2:
-            if manual_rate:
-                gradation_usd_rate = st.number_input(
-                    "Курс USD",
-                    min_value=1.0,
-                    value=float(auto_usd_rate),
-                    step=0.1,
-                    format="%.2f",
-                    key="earring_gradation_usd_rate",
-                    label_visibility="collapsed",
-                )
-            else:
-                gradation_usd_rate = auto_usd_rate
-                st.caption(f"USD {gradation_usd_rate:.2f}")
-
-        st.markdown("---")
-        st.caption(
-            "Для лабораторного діаманта 2.00 ct та натурального чорного 1.50 ct "
-            "ціна виводиться як «Вартість уточнюється»."
-        )
-
-    with right:
-        st.subheader("💎 Картинка для клієнта")
-        st.caption(
-            "Градація діамантів не рахується автоматично. "
-            "Вона формується тільки після натискання окремої кнопки."
-        )
-
-        generate_gradation = st.button(
-            "СФОРМУВАТИ ГРАДАЦІЮ ДІАМАНТІВ",
-            use_container_width=True,
-            key="generate_diamond_gradation",
-        )
-
-        if generate_gradation:
-            st.session_state.gradation_payload = {
-                "model_name": model_name,
-                "material_name": material_name,
-                "coating_name": coating_name,
-                "pair_weight": pair_weight,
-                "diamond_type": diamond_type,
-                "base_pair_price": base_pair_price,
-                "usd_rate": gradation_usd_rate,
-            }
-
-        gradation_payload = st.session_state.get("gradation_payload")
-        if gradation_payload:
-            render_earring_diamond_gradation(**gradation_payload)
-        else:
-            st.info(
-                "Заповніть дані та натисніть «СФОРМУВАТИ ГРАДАЦІЮ ДІАМАНТІВ»."
-            )
-
 elif st.session_state.screen == "ring":
     st.button("← Назад", on_click=go_start)
     st.title("Калькулятор каблучки")
@@ -1822,14 +1305,9 @@ elif st.session_state.screen == "ring":
         small_qty = st.number_input("Малі діаманти — к-сть", min_value=0, value=0, step=1)
         selected_stone_type = st.selectbox(
             "Яке каміння обрав клієнт?",
-            STONE_SELECTION_OPTIONS,
-            index=0,
+            list(STONE_PRICES_USD.keys()),
             key="ring_selected_stone_type",
         )
-
-        if selected_stone_type == "Без каміння":
-            main_qty = 0
-            small_qty = 0
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
