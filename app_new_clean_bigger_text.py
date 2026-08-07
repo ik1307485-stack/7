@@ -486,9 +486,9 @@ def calculate_wedding_rings(data):
 
 """
 
-    # У тексті для клієнта завжди показуємо всі три варіанти каміння,
-    # незалежно від того, який тип каміння менеджер вибрав для чеку.
-    client_text += f"""Середня вартість пари:
+    # Варіанти з камінням показуємо ТІЛЬКИ якщо менеджер реально додав каміння.
+    if ring_stone_qty > 0:
+        client_text += f"""Середня вартість пари:
 • з натуральними діамантами:
 {money100(main_client_variants["Натуральні діаманти"] + custom_client_price)} грн 💎
 • з лабораторними діамантами:
@@ -496,17 +496,27 @@ def calculate_wedding_rings(data):
 • з муасанітами:
 {money100(main_client_variants["Муасаніти"] + custom_client_price)} грн 💎
 """
+    else:
+        client_text += f"""Середня вартість пари:
+{money100(main_client_result["total"] + custom_client_price)} грн
+"""
 
-    # 375 проба показується окремим коротким блоком і тільки з муасанітами.
+    # 375 проба: якщо каміння є — тільки муасаніт; якщо каміння немає — звичайна ціна без каміння.
     if "Золото 375 проби" in selected_materials:
         result_375 = material_results["Золото 375 проби"]
         variants_375 = material_variant_totals["Золото 375 проби"]
-        # Для 375 проби завжди показуємо тільки варіант з муасанітами.
-        price_375 = variants_375["Муасаніти"]
-        client_text += f"""
+
+        if ring_stone_qty > 0:
+            client_text += f"""
 
 Середня вартість виробу у 375 пробі:
-Від {money100(price_375 + custom_client_price)} грн 💎
+Від {money100(variants_375["Муасаніти"] + custom_client_price)} грн 💎
+"""
+        else:
+            client_text += f"""
+
+Середня вартість виробу у 375 пробі:
+{money100(result_375["total"] + custom_client_price)} грн
 """
 
     # Інші вибрані матеріали показуються після основного блоку.
@@ -518,16 +528,23 @@ def calculate_wedding_rings(data):
         variants = material_variant_totals[material]
 
         if material == "Платина 950 проби":
-            platinum_price = variants["Муасаніти"]
-            client_text += f"""
+            if ring_stone_qty > 0:
+                client_text += f"""
 
 Середня вартість виробу у платині 950 проби:
-Від {money100(platinum_price + custom_client_price)} грн 💎
+Від {money100(variants["Муасаніти"] + custom_client_price)} грн 💎
+"""
+            else:
+                client_text += f"""
+
+Середня вартість виробу у платині 950 проби:
+{money100(result["total"] + custom_client_price)} грн
 """
         else:
-            # Для золота 585/750 завжди показуємо всі варіанти каміння.
             assay = material.split()[1]
-            client_text += f"""
+
+            if ring_stone_qty > 0:
+                client_text += f"""
 
 Середня вартість пари у {assay} пробі:
 • з натуральними діамантами:
@@ -536,6 +553,12 @@ def calculate_wedding_rings(data):
 {money100(variants["Лабораторні діаманти"] + custom_client_price)} грн 💎
 • з муасанітами:
 {money100(variants["Муасаніти"] + custom_client_price)} грн 💎
+"""
+            else:
+                client_text += f"""
+
+Середня вартість пари у {assay} пробі:
+{money100(result["total"] + custom_client_price)} грн
 """
 
 
@@ -755,7 +778,7 @@ def calculate_ring(data):
 Покриття: {coating_name}
 Вставки: {inserts_text}
 """
-    has_stones = (main_qty + small_qty) > 0
+    has_stones = (main_qty + small_qty) > 0 and selected_stone_type != "Без каміння"
     for material in selected_materials:
         result = material_results[material]
         variants = material_variant_totals[material] if has_stones else None
