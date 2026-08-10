@@ -21,7 +21,8 @@ MATERIAL_OPTIONS = [
     "Платина 950 проби",
 ]
 WORK_VYSHYVANKA = 3100
-WORK_INDIVIDUAL = 3000
+WORK_INDIVIDUAL = 2900
+WORK_CLASSIC_OPTIONS = [2600, 2700]
 WORK_RING = 6100
 PACKAGING = 3000
 BASE_DISCOUNT = 9400
@@ -79,11 +80,13 @@ def calc_weight(size, width, thickness):
     return length * w * t * K
 
 
-def get_work_price(product_type, design=None):
+def get_work_price(product_type, design=None, classic_work_price=None):
     if product_type == "Каблучка":
         return WORK_RING
     if design == "Вишиванка":
         return WORK_VYSHYVANKA
+    if design == "Класика":
+        return float(classic_work_price or WORK_CLASSIC_OPTIONS[0])
     return WORK_INDIVIDUAL
 
 
@@ -116,15 +119,18 @@ def material_weight(base_weight, material, item_count):
     return base_weight
 
 
-def material_prices(material, product_type, design, usd_rate):
+def material_prices(material, product_type, design, usd_rate, classic_work_price=None):
     """Повертає ціну металу та роботи за 1 грам у гривнях."""
     if material == "Золото 375 проби":
         metal_per_gram = GOLD_PRICE_375
-        work_per_gram = get_work_price(product_type, design)
+        work_per_gram = get_work_price(product_type, design, classic_work_price)
     elif material == "Золото 750 проби":
         metal_per_gram = GOLD_PRICE_750
         if product_type == "Каблучка":
             work_per_gram = 7320
+        elif design == "Класика":
+            # Для класичних обручок менеджер сам обирає 2600 або 2700 грн/г.
+            work_per_gram = float(classic_work_price or WORK_CLASSIC_OPTIONS[0])
         elif design == "Вишиванка":
             work_per_gram = 3720
         else:
@@ -134,7 +140,7 @@ def material_prices(material, product_type, design, usd_rate):
         work_per_gram = PLATINUM_WORK_USD_PER_GRAM * usd_rate
     else:
         metal_per_gram = GOLD_PRICE
-        work_per_gram = get_work_price(product_type, design)
+        work_per_gram = get_work_price(product_type, design, classic_work_price)
     return metal_per_gram, work_per_gram
 
 
@@ -160,10 +166,11 @@ def calculate_material_variant(
     coating_uah,
     delivery,
     stones_uah,
+    classic_work_price=None,
 ):
     weight = material_weight(base_weight, material, item_count)
     metal_per_gram, work_per_gram = material_prices(
-        material, product_type, design, usd_rate
+        material, product_type, design, usd_rate, classic_work_price
     )
     metal_cost = weight * metal_per_gram
     work_cost = weight * work_per_gram
@@ -243,6 +250,7 @@ def calculate_wedding_rings(data):
     thickness_2 = data["thickness_2"] if use_second_ring else 0
 
     design = data["design"]
+    classic_work_price = float(data.get("classic_work_price", WORK_CLASSIC_OPTIONS[0]) or WORK_CLASSIC_OPTIONS[0])
     gold_type = data.get("gold_type", "Біле")
     selected_materials = data.get("selected_materials") or ["Золото 585 проби"]
     receipt_material = data.get("receipt_material") or selected_materials[0]
@@ -317,6 +325,7 @@ def calculate_wedding_rings(data):
                 if material == "Золото 375 проби"
                 else stones_uah
             ),
+            classic_work_price=classic_work_price,
         )
         if manual_discount_enabled:
             result["base_total"] -= custom_discount
@@ -336,11 +345,12 @@ def calculate_wedding_rings(data):
     primary = material_results[receipt_material]
     total_discount = custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)
 
-    title = (
-        "Індивідуальна модель обручок «Вишиванка» ⚜️"
-        if design == "Вишиванка"
-        else "Індивідуальна модель обручок ⚜️"
-    )
+    if design == "Вишиванка":
+        title = "Індивідуальна модель обручок «Вишиванка» ⚜️"
+    elif design == "Класика":
+        title = "Класичні обручки ⚜️"
+    else:
+        title = "Індивідуальна модель обручок ⚜️"
     inserts_text = (
         f"{ring_stone_size} - {ring_stone_qty} шт"
         if ring_stone_qty > 0
@@ -1103,7 +1113,24 @@ elif st.session_state.screen == "wedding":
 
     with left:
         st.subheader("Дані для прорахунку")
-        design = st.selectbox("Дизайн", ["Вишиванка", "Індивідуальний"])
+        design = st.selectbox(
+            "Дизайн",
+            ["Вишиванка", "Індивідуальний", "Класика"],
+            key="wedding_design",
+        )
+
+        if design == "Класика":
+            classic_work_price = st.selectbox(
+                "Вартість роботи для класики, грн/г",
+                WORK_CLASSIC_OPTIONS,
+                index=0,
+                key="wedding_classic_work_price",
+                format_func=lambda x: f"{money(x)} грн/г",
+            )
+            st.caption("Класика (американки / європейки): 2 600–2 700 грн/г")
+        else:
+            classic_work_price = WORK_CLASSIC_OPTIONS[0]
+
         gold_type = st.selectbox("Колір золота", GOLD_TYPES, index=2, key="wedding_gold_type")
         selected_materials = st.multiselect(
             "Матеріали для прорахунку",
@@ -1227,7 +1254,7 @@ elif st.session_state.screen == "wedding":
             st.session_state.wedding_manual_weight_1 = 0.0
             st.session_state.wedding_manual_weight_2 = 0.0
             technical_text, client_text, receipt_data = calculate_wedding_rings({
-                "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
+                "design": design, "classic_work_price": classic_work_price, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
@@ -1254,7 +1281,7 @@ elif st.session_state.screen == "wedding":
             st.session_state.wedding_manual_weight_1 = manual_weight_1_right
             st.session_state.wedding_manual_weight_2 = manual_weight_2_right
             technical_text, client_text, receipt_data = calculate_wedding_rings({
-                "design": design, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
+                "design": design, "classic_work_price": classic_work_price, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
