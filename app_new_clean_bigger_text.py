@@ -446,6 +446,7 @@ def calculate_wedding_rings(data):
 {main_client_result["material_name"]} ✨
 {client_sizes_text}
 {client_width_text}
+Покриття: {coating_name}
 Вставки: {inserts_text}
 Середня вага пари: {main_client_result["weight"]:.1f} г
 
