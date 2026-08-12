@@ -277,6 +277,11 @@ def calculate_wedding_rings(data):
     ring_stone_size = data["ring_stone_size"]
     ring_stone_qty = data["ring_stone_qty"] if ring_stone_enabled else 0
     selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
+    diamond_name = str(data.get("diamond_name", "") or "").strip()
+    diamond_cut = str(data.get("diamond_cut", "") or "").strip()
+    custom_diamond_price_enabled = bool(data.get("custom_diamond_price_enabled", False))
+    custom_diamond_price = float(data.get("custom_diamond_price", 0) or 0)
+    custom_diamond_price_currency = data.get("custom_diamond_price_currency", "USD")
 
     manual_weight_1 = data.get("manual_weight_1", 0)
     manual_weight_2 = data.get("manual_weight_2", 0)
@@ -304,6 +309,14 @@ def calculate_wedding_rings(data):
         "Муасаніти", ring_stone_size, ring_stone_qty, usd_rate
     )
 
+    manual_stones_uah = (
+        custom_diamond_price * usd_rate
+        if custom_diamond_price_currency == "USD"
+        else custom_diamond_price
+    ) if custom_diamond_price_enabled and ring_stone_qty > 0 else None
+    effective_stones_uah = manual_stones_uah if manual_stones_uah is not None else stones_uah
+    effective_moissanite_stones_uah = manual_stones_uah if manual_stones_uah is not None else moissanite_stones_uah
+
     material_results = {}
     material_variant_totals = {}
     for material in selected_materials:
@@ -321,9 +334,9 @@ def calculate_wedding_rings(data):
             coating_uah=coating_uah,
             delivery=delivery,
             stones_uah=(
-                moissanite_stones_uah
+                effective_moissanite_stones_uah
                 if material == "Золото 375 проби"
-                else stones_uah
+                else effective_stones_uah
             ),
             classic_work_price=classic_work_price,
         )
@@ -530,10 +543,13 @@ def calculate_wedding_rings(data):
         "engraving": engraving,
         "coating_cost": coating_uah,
         "stones_cost": (
-            moissanite_stones_uah
+            effective_moissanite_stones_uah
             if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
-            else stones_uah
-        ),
+            else effective_stones_uah
+        ) if ring_stone_qty > 0 else 0,
+        "diamond_name": diamond_name,
+        "diamond_cut": diamond_cut,
+        "custom_diamond_price_enabled": custom_diamond_price_enabled,
         "delivery": delivery,
         "total": primary["total"] + custom_client_price,
         "has_stones": ring_stone_qty > 0,
@@ -543,15 +559,16 @@ def calculate_wedding_rings(data):
             else selected_stone_type if ring_stone_qty > 0 else "Без каміння"
         ),
         "selected_total": (
-            (
+            primary["total"]
+            if custom_diamond_price_enabled and ring_stone_qty > 0
+            else (
                 material_variant_totals[receipt_material]["Муасаніти"]
                 if receipt_material == "Золото 375 проби" and ring_stone_qty > 0
                 else material_variant_totals[receipt_material][selected_stone_type]
                 if ring_stone_qty > 0
                 else primary["total"]
             )
-            + custom_client_price
-        ),
+        ) + custom_client_price,
         "variant_totals": material_variant_totals[receipt_material],
     }
     return technical_text, client_text, receipt_data
@@ -591,6 +608,11 @@ def calculate_ring(data):
     small_size = data["small_size"]
     small_qty = data["small_qty"]
     selected_stone_type = data.get("selected_stone_type", "Натуральні діаманти")
+    diamond_name = str(data.get("diamond_name", "") or "").strip()
+    diamond_cut = str(data.get("diamond_cut", "") or "").strip()
+    custom_diamond_price_enabled = bool(data.get("custom_diamond_price_enabled", False))
+    custom_diamond_price = float(data.get("custom_diamond_price", 0) or 0)
+    custom_diamond_price_currency = data.get("custom_diamond_price_currency", "USD")
     manual_weight = data.get("manual_weight", 0)
 
     auto_weight = calc_weight(size, width, thickness)
@@ -615,6 +637,15 @@ def calculate_ring(data):
     moissanite_stones_usd = moissanite_main_usd + moissanite_small_usd
     moissanite_stones_uah = moissanite_main_uah + moissanite_small_uah
 
+    has_stones = (main_qty + small_qty) > 0
+    manual_stones_uah = (
+        custom_diamond_price * usd_rate
+        if custom_diamond_price_currency == "USD"
+        else custom_diamond_price
+    ) if custom_diamond_price_enabled and has_stones else None
+    effective_stones_uah = manual_stones_uah if manual_stones_uah is not None else stones_uah
+    effective_moissanite_stones_uah = manual_stones_uah if manual_stones_uah is not None else moissanite_stones_uah
+
     material_results = {}
     material_variant_totals = {}
     for material in selected_materials:
@@ -632,9 +663,9 @@ def calculate_ring(data):
             coating_uah=coating_uah,
             delivery=delivery,
             stones_uah=(
-                moissanite_stones_uah
+                effective_moissanite_stones_uah
                 if material == "Золото 375 проби"
-                else stones_uah
+                else effective_stones_uah
             ),
         )
         if manual_discount_enabled:
@@ -718,7 +749,6 @@ def calculate_ring(data):
 Покриття: {coating_name}
 Вставки: {inserts_text}
 """
-    has_stones = (main_qty + small_qty) > 0
     for material in selected_materials:
         result = material_results[material]
         variants = material_variant_totals[material] if has_stones else None
@@ -748,10 +778,13 @@ def calculate_ring(data):
         "engraving": engraving,
         "coating_cost": coating_uah,
         "stones_cost": (
-            moissanite_stones_uah
+            effective_moissanite_stones_uah
             if receipt_material == "Золото 375 проби" and has_stones
-            else stones_uah
-        ),
+            else effective_stones_uah
+        ) if has_stones else 0,
+        "diamond_name": diamond_name,
+        "diamond_cut": diamond_cut,
+        "custom_diamond_price_enabled": custom_diamond_price_enabled,
         "delivery": delivery,
         "total": primary["total"] + custom_client_price,
         "has_stones": has_stones,
@@ -761,15 +794,16 @@ def calculate_ring(data):
             else selected_stone_type if has_stones else "Без каміння"
         ),
         "selected_total": (
-            (
+            primary["total"]
+            if custom_diamond_price_enabled and has_stones
+            else (
                 material_variant_totals[receipt_material]["Муасаніти"]
                 if receipt_material == "Золото 375 проби" and has_stones
                 else material_variant_totals[receipt_material][selected_stone_type]
                 if has_stones
                 else primary["total"]
             )
-            + custom_client_price
-        ),
+        ) + custom_client_price,
         "variant_totals": material_variant_totals[receipt_material],
     }
     return technical_text, client_text, receipt_data
@@ -792,7 +826,7 @@ def render_client_receipt(receipt_data):
         return (
             f'<div class="{css_class}">'
             f'<span>{safe(label)}</span>'
-            f'<strong>{sign}{money100(value)} грн</strong>'
+            f'<strong>{sign}{money100(value)} UAH</strong>'
             f'</div>'
         )
 
@@ -800,29 +834,65 @@ def render_client_receipt(receipt_data):
         return (
             '<div class="receipt-subrow">'
             f'<span>{safe(label)}</span>'
-            f'<strong>{money100(value)} грн</strong>'
+            f'<strong>{money100(value)} UAH</strong>'
             '</div>'
         )
 
+    def receipt_product_title(value):
+        mapping = {
+            "Індивідуальна модель обручок «Вишиванка»": "Vyshyvanka Wedding Rings",
+            "Класичні обручки": "Classic Wedding Rings",
+            "Індивідуальна модель обручок": "Custom Design Wedding Rings",
+            "Каблучка індивідуального дизайну": "Custom Design Ring",
+        }
+        return mapping.get(str(value), str(value))
+
+    def receipt_material(value):
+        value = str(value)
+        value = value.replace("Платина", "Platinum").replace("проби", "fineness")
+        value = value.replace("Біле золото", "White gold").replace("Жовте золото", "Yellow gold")
+        value = value.replace("Лимонне золото", "Yellow gold").replace("Червоне золото", "Red gold")
+        value = value.replace("Рожеве золото", "Rose gold")
+        return value
+
+    def receipt_coating(value):
+        mapping = {"Без покриття": "No coating", "Родій": "Rhodium", "Рутеній": "Ruthenium", "Емаль": "Enamel"}
+        value = str(value)
+        for ua, en in mapping.items():
+            value = value.replace(ua, en)
+        return value
+
+    def receipt_stone_type(value):
+        return {
+            "Натуральні діаманти": "Natural diamonds",
+            "Лабораторні діаманти": "Lab-grown diamonds",
+            "Муасаніти": "Moissanites",
+            "Без каміння": "No stones",
+        }.get(str(value), str(value))
+
+    def receipt_inserts(value):
+        value = str(value)
+        if value.strip().lower() == "не додано":
+            return "Not added"
+        return value.replace(" мм", " mm").replace(" шт", " pcs")
+
     items_html = ""
-    items_html += row("Вартість дорогоцінного металу", receipt_data.get("gold_cost", 0))
+    items_html += row("Precious metal", receipt_data.get("gold_cost", 0))
     items_html += '<div class="work-group">'
-    items_html += row("Робота ювелірів повного циклу", receipt_data.get("work_cost", 0))
-    items_html += subrow("Відлив", receipt_data.get("casting_cost", 0))
-    items_html += subrow("Ручна обробка", receipt_data.get("manual_processing_cost", 0))
-    items_html += subrow("Фінальне шліфування", receipt_data.get("final_polishing_cost", 0))
+    items_html += row("Full-cycle jewellery work", receipt_data.get("work_cost", 0))
+    items_html += subrow("Casting", receipt_data.get("casting_cost", 0))
+    items_html += subrow("Hand finishing", receipt_data.get("manual_processing_cost", 0))
+    items_html += subrow("Final polishing", receipt_data.get("final_polishing_cost", 0))
     items_html += '</div>'
-    #items_html += row("Загальна знижка", receipt_data.get("total_discount", 0), negative=True)
-    #items_html += row("Упаковка", receipt_data.get("packaging", 0))
-    items_html += row("Гравіювання", receipt_data.get("engraving", 0))
-    items_html += row("Покриття", receipt_data.get("coating_cost", 0))
+    items_html += row("Engraving", receipt_data.get("engraving", 0))
+    items_html += row("Coating", receipt_data.get("coating_cost", 0))
     stone_cost_label = (
-        f"Каміння — {receipt_data.get('selected_stone_type', '')}"
+        f"Stones — {receipt_stone_type(receipt_data.get('selected_stone_type', ''))}"
         if receipt_data.get("has_stones")
-        else "Каміння"
+        else "Stones"
     )
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
-    items_html += row("Загальна знижка", receipt_data.get("total_discount", 0), negative=True)
+    items_html += row("Total discount", receipt_data.get("total_discount", 0), negative=True)
 
     #items_html += row("Доставка", receipt_data.get("delivery", 0))
 
@@ -832,7 +902,7 @@ def render_client_receipt(receipt_data):
 
     receipt_html = f"""
     <!DOCTYPE html>
-    <html lang="uk">
+    <html lang="en">
     <head>
     <meta charset="UTF-8">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -1008,8 +1078,8 @@ def render_client_receipt(receipt_data):
       <div id="receipt-card" class="receipt">
         <div class="logo-wrap"><img class="logo-image" src="{LOGO_DATA_URL}" alt="Lana &amp; Lona Jewellery"></div>
 
-        <div class="receipt-title">Персональний розрахунок</div>
-        <div class="product-title">{safe(receipt_data.get("title", ""))}</div>
+        <div class="receipt-title">Personal Calculation</div>
+        <div class="product-title">{safe(receipt_product_title(receipt_data.get("title", "")))}</div>
 
         <div class="meta">
           <span>№ {receipt_number}</span>
@@ -1017,25 +1087,27 @@ def render_client_receipt(receipt_data):
         </div>
 
         <div class="specs">
-          <div class="spec"><span>Дорогоцінний метал</span><strong>{safe(receipt_data.get("gold_type", ""))}</strong></div>
-          <div class="spec"><span>Розмір</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
-          <div class="spec"><span>Ширина</span><strong>{safe(receipt_data.get("width", ""))}</strong></div>
-          <div class="spec"><span>Покриття</span><strong>{safe(receipt_data.get("coating", ""))}</strong></div>
-          <div class="spec"><span>Вага виробу</span><strong>{safe(receipt_data.get("weight", ""))}</strong></div>
-          <div class="spec"><span>Вставки</span><strong>{safe(receipt_data.get("inserts", "не додано"))}</strong></div>
+          <div class="spec"><span>Precious metal</span><strong>{safe(receipt_material(receipt_data.get("gold_type", "")))}</strong></div>
+          <div class="spec"><span>Size</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
+          <div class="spec"><span>Width</span><strong>{safe(str(receipt_data.get("width", "")).replace(" мм", " mm"))}</strong></div>
+          <div class="spec"><span>Coating</span><strong>{safe(receipt_coating(receipt_data.get("coating", "")))}</strong></div>
+          <div class="spec"><span>Item weight</span><strong>{safe(str(receipt_data.get("weight", "")).replace(" г", " g"))}</strong></div>
+          <div class="spec"><span>Inserts</span><strong>{safe(receipt_inserts(receipt_data.get("inserts", "не додано")))}</strong></div>
+          {f'<div class="spec"><span>Diamond / stone name</span><strong>{safe(receipt_data.get("diamond_name", ""))}</strong></div>' if receipt_data.get("has_stones") and receipt_data.get("diamond_name") else ''}
+          {f'<div class="spec"><span>Cut</span><strong>{safe(receipt_data.get("diamond_cut", ""))}</strong></div>' if receipt_data.get("has_stones") and receipt_data.get("diamond_cut") else ''}
         </div>
 
         <div class="items">{items_html}</div>
 
 
         <div class="total">
-          <div class="total-label">До сплати</div>
-          <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} грн</div>
+          <div class="total-label">Total Due</div>
+          <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} UAH</div>
         </div>
 
         <div class="footer">
-          Розрахунок є орієнтовним і може уточнюватися після погодження всіх деталей виробу.<br>
-          Дякуємо, що обираєте Lana &amp; Lona.
+          This calculation is approximate and may be adjusted after all product details are confirmed.<br>
+          Thank you for choosing Lana &amp; Lona.
         </div>
 
       </div>
@@ -1170,6 +1242,38 @@ elif st.session_state.screen == "wedding":
             disabled=not ring_stone_enabled,
             key="wedding_selected_stone_type",
         )
+        diamond_name = st.text_input(
+            "Назва діаманта / каменю",
+            placeholder="Наприклад: GIA 1234567890 або Natural Diamond",
+            disabled=not ring_stone_enabled,
+            key="wedding_diamond_name",
+        )
+        diamond_cut = st.text_input(
+            "Огранка",
+            placeholder="Наприклад: Round, Oval, Emerald",
+            disabled=not ring_stone_enabled,
+            key="wedding_diamond_cut",
+        )
+        custom_diamond_price_enabled = st.checkbox(
+            "Ввести свою ціну діаманта",
+            value=False,
+            disabled=not ring_stone_enabled,
+            key="wedding_custom_diamond_price_enabled",
+        )
+        if custom_diamond_price_enabled and ring_stone_enabled:
+            diamond_price_col1, diamond_price_col2 = st.columns([1, 2])
+            with diamond_price_col1:
+                custom_diamond_price_currency = st.selectbox(
+                    "Валюта", ["USD", "UAH"], key="wedding_custom_diamond_price_currency"
+                )
+            with diamond_price_col2:
+                custom_diamond_price = st.number_input(
+                    "Ціна діаманта", min_value=0.0, value=0.0, step=10.0,
+                    key="wedding_custom_diamond_price"
+                )
+        else:
+            custom_diamond_price_currency = "USD"
+            custom_diamond_price = 0.0
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
@@ -1260,6 +1364,10 @@ elif st.session_state.screen == "wedding":
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
+                "diamond_name": diamond_name, "diamond_cut": diamond_cut,
+                "custom_diamond_price_enabled": custom_diamond_price_enabled, "custom_diamond_price": custom_diamond_price, "custom_diamond_price_currency": custom_diamond_price_currency,
+                "diamond_name": diamond_name, "diamond_cut": diamond_cut,
+                "custom_diamond_price_enabled": custom_diamond_price_enabled, "custom_diamond_price": custom_diamond_price, "custom_diamond_price_currency": custom_diamond_price_currency,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -1287,6 +1395,10 @@ elif st.session_state.screen == "wedding":
                 "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
+                "diamond_name": diamond_name, "diamond_cut": diamond_cut,
+                "custom_diamond_price_enabled": custom_diamond_price_enabled, "custom_diamond_price": custom_diamond_price, "custom_diamond_price_currency": custom_diamond_price_currency,
+                "diamond_name": diamond_name, "diamond_cut": diamond_cut,
+                "custom_diamond_price_enabled": custom_diamond_price_enabled, "custom_diamond_price": custom_diamond_price, "custom_diamond_price_currency": custom_diamond_price_currency,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -1335,6 +1447,35 @@ elif st.session_state.screen == "ring":
             list(STONE_PRICES_USD.keys()),
             key="ring_selected_stone_type",
         )
+        diamond_name = st.text_input(
+            "Назва діаманта / каменю",
+            placeholder="Наприклад: GIA 1234567890 або Natural Diamond",
+            key="ring_diamond_name",
+        )
+        diamond_cut = st.text_input(
+            "Огранка",
+            placeholder="Наприклад: Round, Oval, Emerald",
+            key="ring_diamond_cut",
+        )
+        custom_diamond_price_enabled = st.checkbox(
+            "Ввести свою ціну діаманта",
+            value=False,
+            key="ring_custom_diamond_price_enabled",
+        )
+        if custom_diamond_price_enabled:
+            diamond_price_col1, diamond_price_col2 = st.columns([1, 2])
+            with diamond_price_col1:
+                custom_diamond_price_currency = st.selectbox(
+                    "Валюта", ["USD", "UAH"], key="ring_custom_diamond_price_currency"
+                )
+            with diamond_price_col2:
+                custom_diamond_price = st.number_input(
+                    "Ціна діаманта", min_value=0.0, value=0.0, step=10.0,
+                    key="ring_custom_diamond_price"
+                )
+        else:
+            custom_diamond_price_currency = "USD"
+            custom_diamond_price = 0.0
         st.markdown("### Додатково")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
