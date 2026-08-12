@@ -815,18 +815,38 @@ def render_client_receipt(receipt_data):
         st.info("Спочатку виконайте розрахунок, щоб сформувати чек.")
         return
 
+    # Налаштування чека: мова та термінове виготовлення
+    controls_col1, controls_col2 = st.columns(2)
+    with controls_col1:
+        receipt_language = st.radio(
+            "Мова чека",
+            ["Українська", "English"],
+            horizontal=True,
+            key="receipt_language",
+        )
+    with controls_col2:
+        priority_production = st.checkbox(
+            "Термінове виготовлення",
+            key="priority_production",
+        )
+
+    lang_en = receipt_language == "English"
+
+    def tr(ua, en):
+        return en if lang_en else ua
+
     def safe(value):
         return html.escape(str(value))
 
-    def row(label, value, negative=False):
-        if not value:
+    def row(label, value, negative=False, show_zero=False):
+        if not value and not show_zero:
             return ""
         css_class = "receipt-row negative" if negative else "receipt-row"
         sign = "−" if negative else ""
         return (
             f'<div class="{css_class}">'
             f'<span>{safe(label)}</span>'
-            f'<strong>{sign}{money100(value)} UAH</strong>'
+            f'<strong>{sign}{money100(value or 0)} UAH</strong>'
             f'</div>'
         )
 
@@ -845,10 +865,12 @@ def render_client_receipt(receipt_data):
             "Індивідуальна модель обручок": "Custom Design Wedding Rings",
             "Каблучка індивідуального дизайну": "Custom Design Ring",
         }
-        return mapping.get(str(value), str(value))
+        return mapping.get(str(value), str(value)) if lang_en else str(value)
 
     def receipt_material(value):
         value = str(value)
+        if not lang_en:
+            return value
         value = value.replace("Платина", "Platinum").replace("проби", "fineness")
         value = value.replace("Біле золото", "White gold").replace("Жовте золото", "Yellow gold")
         value = value.replace("Лимонне золото", "Yellow gold").replace("Червоне золото", "Red gold")
@@ -856,6 +878,8 @@ def render_client_receipt(receipt_data):
         return value
 
     def receipt_coating(value):
+        if not lang_en:
+            return str(value)
         mapping = {"Без покриття": "No coating", "Родій": "Rhodium", "Рутеній": "Ruthenium", "Емаль": "Enamel"}
         value = str(value)
         for ua, en in mapping.items():
@@ -863,6 +887,8 @@ def render_client_receipt(receipt_data):
         return value
 
     def receipt_stone_type(value):
+        if not lang_en:
+            return str(value)
         return {
             "Натуральні діаманти": "Natural diamonds",
             "Лабораторні діаманти": "Lab-grown diamonds",
@@ -872,27 +898,37 @@ def render_client_receipt(receipt_data):
 
     def receipt_inserts(value):
         value = str(value)
+        if not lang_en:
+            return value
         if value.strip().lower() == "не додано":
             return "Not added"
         return value.replace(" мм", " mm").replace(" шт", " pcs")
 
     items_html = ""
-    items_html += row("Precious metal", receipt_data.get("gold_cost", 0))
+    items_html += row(tr("Дорогоцінний метал", "Precious metal"), receipt_data.get("gold_cost", 0))
     items_html += '<div class="work-group">'
-    items_html += row("Full-cycle jewellery work", receipt_data.get("work_cost", 0))
-    items_html += subrow("Casting", receipt_data.get("casting_cost", 0))
-    items_html += subrow("Hand finishing", receipt_data.get("manual_processing_cost", 0))
-    items_html += subrow("Final polishing", receipt_data.get("final_polishing_cost", 0))
+    items_html += row(tr("Робота ювелірів повного циклу", "Full-cycle jewellery work"), receipt_data.get("work_cost", 0))
+    items_html += subrow(tr("Відлив", "Casting"), receipt_data.get("casting_cost", 0))
+    items_html += subrow(tr("Ручна обробка", "Hand finishing"), receipt_data.get("manual_processing_cost", 0))
+    items_html += subrow(tr("Фінальне шліфування", "Final polishing"), receipt_data.get("final_polishing_cost", 0))
     items_html += '</div>'
-    items_html += row("Engraving", receipt_data.get("engraving", 0))
-    items_html += row("Coating", receipt_data.get("coating_cost", 0))
+    items_html += row(tr("Гравіювання", "Engraving"), receipt_data.get("engraving", 0))
+    coating_label = (
+        f'{tr("Покриття", "Coating")} — '
+        f'{receipt_coating(receipt_data.get("coating", tr("Без покриття", "No coating")))}'
+    )
+    items_html += row(
+        coating_label,
+        receipt_data.get("coating_cost", 0),
+        show_zero=True,
+    )
     stone_cost_label = (
-        f"Stones — {receipt_stone_type(receipt_data.get('selected_stone_type', ''))}"
+        f"{tr('Каміння', 'Stones')} — {receipt_stone_type(receipt_data.get('selected_stone_type', ''))}"
         if receipt_data.get("has_stones")
-        else "Stones"
+        else tr("Каміння", "Stones")
     )
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
-    items_html += row("Total discount", receipt_data.get("total_discount", 0), negative=True)
+    items_html += row(tr("Загальна знижка", "Total discount"), receipt_data.get("total_discount", 0), negative=True)
 
     #items_html += row("Доставка", receipt_data.get("delivery", 0))
 
@@ -902,7 +938,7 @@ def render_client_receipt(receipt_data):
 
     receipt_html = f"""
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="{'en' if lang_en else 'uk'}">
     <head>
     <meta charset="UTF-8">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -1078,7 +1114,7 @@ def render_client_receipt(receipt_data):
       <div id="receipt-card" class="receipt">
         <div class="logo-wrap"><img class="logo-image" src="{LOGO_DATA_URL}" alt="Lana &amp; Lona Jewellery"></div>
 
-        <div class="receipt-title">Personal Calculation</div>
+        <div class="receipt-title">{tr("Індивідуальний прорахунок", "Personal Calculation")}</div>
         <div class="product-title">{safe(receipt_product_title(receipt_data.get("title", "")))}</div>
 
         <div class="meta">
@@ -1087,27 +1123,28 @@ def render_client_receipt(receipt_data):
         </div>
 
         <div class="specs">
-          <div class="spec"><span>Precious metal</span><strong>{safe(receipt_material(receipt_data.get("gold_type", "")))}</strong></div>
-          <div class="spec"><span>Size</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
-          <div class="spec"><span>Width</span><strong>{safe(str(receipt_data.get("width", "")).replace(" мм", " mm"))}</strong></div>
-          <div class="spec"><span>Coating</span><strong>{safe(receipt_coating(receipt_data.get("coating", "")))}</strong></div>
-          <div class="spec"><span>Item weight</span><strong>{safe(str(receipt_data.get("weight", "")).replace(" г", " g"))}</strong></div>
-          <div class="spec"><span>Inserts</span><strong>{safe(receipt_inserts(receipt_data.get("inserts", "не додано")))}</strong></div>
-          {f'<div class="spec"><span>Diamond / stone name</span><strong>{safe(receipt_data.get("diamond_name", ""))}</strong></div>' if receipt_data.get("has_stones") and receipt_data.get("diamond_name") else ''}
-          {f'<div class="spec"><span>Cut</span><strong>{safe(receipt_data.get("diamond_cut", ""))}</strong></div>' if receipt_data.get("has_stones") and receipt_data.get("diamond_cut") else ''}
+          <div class="spec"><span>{tr("Дорогоцінний метал", "Precious metal")}</span><strong>{safe(receipt_material(receipt_data.get("gold_type", "")))}</strong></div>
+          <div class="spec"><span>{tr("Розмір", "Size")}</span><strong>{safe(receipt_data.get("sizes", ""))}</strong></div>
+          <div class="spec"><span>{tr("Ширина", "Width")}</span><strong>{safe(str(receipt_data.get("width", "")).replace(" мм", " mm") if lang_en else receipt_data.get("width", ""))}</strong></div>
+          <div class="spec"><span>{tr("Покриття", "Coating")}</span><strong>{safe(receipt_coating(receipt_data.get("coating", "")))}</strong></div>
+          <div class="spec"><span>{tr("Вага виробу", "Item weight")}</span><strong>{safe(str(receipt_data.get("weight", "")).replace(" г", " g") if lang_en else receipt_data.get("weight", ""))}</strong></div>
+          <div class="spec"><span>{tr("Вставки", "Inserts")}</span><strong>{safe(receipt_inserts(receipt_data.get("inserts", "не додано")))}</strong></div>
+          {f'<div class="spec"><span>{tr("Термінове виготовлення", "Priority production")}</span><strong>{tr("Так", "Yes")}</strong></div>' if priority_production else ''}
+          {f'<div class="spec"><span>{tr("Назва діаманту / каменю", "Diamond / stone name")}</span><strong>{safe(receipt_data.get("diamond_name", ""))}</strong></div>' if receipt_data.get("has_stones") and receipt_data.get("diamond_name") else ''}
+          {f'<div class="spec"><span>{tr("Огранка", "Cut")}</span><strong>{safe(receipt_data.get("diamond_cut", ""))}</strong></div>' if receipt_data.get("has_stones") and receipt_data.get("diamond_cut") else ''}
         </div>
 
         <div class="items">{items_html}</div>
 
 
         <div class="total">
-          <div class="total-label">Total Due</div>
+          <div class="total-label">{tr("До сплати", "Total Due")}</div>
           <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} UAH</div>
         </div>
 
         <div class="footer">
-          This calculation is approximate and may be adjusted after all product details are confirmed.<br>
-          Thank you for choosing Lana &amp; Lona.
+          {tr("Цей розрахунок є орієнтовним і може бути скоригований після узгодження всіх деталей виробу.", "This calculation is approximate and may be adjusted after all product details are confirmed.")}<br>
+          {tr("Дякуємо, що обираєте Lana &amp; Lona.", "Thank you for choosing Lana &amp; Lona.")}
         </div>
 
       </div>
