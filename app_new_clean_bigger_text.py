@@ -198,7 +198,7 @@ def calculate_material_variant(
     }
 
 
-def build_material_price_block(material_result, variant_totals=None, custom_client_price=0):
+def build_material_price_block(material_result, variant_totals=None, custom_client_price=0, details_text=""):
     material_name = material_result["material_name"]
     material = material_result.get("material", "")
     weight = material_result["weight"]
@@ -207,7 +207,7 @@ def build_material_price_block(material_result, variant_totals=None, custom_clie
     if material == "Золото 375 проби" and variant_totals:
         return f"""
 {material_name} 💍
-Середня вага виробу: {weight:.1f} г
+{details_text}Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
 • з муасанітами:
@@ -217,7 +217,7 @@ def build_material_price_block(material_result, variant_totals=None, custom_clie
     if variant_totals:
         return f"""
 {material_name} 💍
-Середня вага виробу: {weight:.1f} г
+{details_text}Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
 • з натуральними діамантами:
@@ -230,7 +230,7 @@ def build_material_price_block(material_result, variant_totals=None, custom_clie
 
     return f"""
 {material_name} 💍
-Середня вага виробу: {weight:.1f} г
+{details_text}Середня вага виробу: {weight:.1f} г
 
 Середня вартість виробу:
 {money100(material_result["total"] + custom_client_price)} грн 💎
@@ -743,17 +743,17 @@ def calculate_ring(data):
 {money(primary["total"])} грн
 """
 
-    client_text = f"""Каблучка індивідуального дизайну ⚜️
-
-Розмір: {size:g}
-Ширина: {width:g} мм
+    client_text = "Каблучка індивідуального дизайну ⚜️\n"
+    details_text = f"""Розмір: {size:g}
 Покриття: {coating_name}
 Вставки: {inserts_text}
 """
     for material in selected_materials:
         result = material_results[material]
         variants = material_variant_totals[material] if has_stones else None
-        client_text += build_material_price_block(result, variants, custom_client_price)
+        client_text += build_material_price_block(
+            result, variants, custom_client_price, details_text=details_text
+        )
 
 
     receipt_data = {
