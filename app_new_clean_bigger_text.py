@@ -1341,7 +1341,9 @@ elif st.session_state.screen == "wedding":
                 custom_discount = 0.0
 
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="wedding_coating_option")
-        engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
+        engraving_options = [0, 3000] if use_second_ring else [0, 1500]
+        engraving_label = "Гравіювання за пару, грн" if use_second_ring else "Гравіювання за виріб, грн"
+        engraving = st.selectbox(engraving_label, engraving_options, key="wedding_engraving")
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
 
         custom_col1, custom_col2 = st.columns([1.7, 1])
@@ -1543,7 +1545,7 @@ elif st.session_state.screen == "ring":
                 custom_discount = 0.0
 
         coating_option = st.selectbox("Покриття", list(COATING_OPTIONS.keys()), key="ring_coating_option")
-        engraving = st.selectbox("Гравіювання, грн", [0, 800, 1500])
+        engraving = st.selectbox("Гравіювання за виріб, грн", [0, 1500], key="ring_engraving")
         delivery = st.number_input("Доставка, грн", min_value=0.0, value=0.0, step=100.0)
 
         custom_col1, custom_col2 = st.columns([1.7, 1])
