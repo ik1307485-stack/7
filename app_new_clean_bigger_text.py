@@ -1,5 +1,6 @@
 
 import html
+import json
 from datetime import datetime
 
 import requests
@@ -1074,6 +1075,17 @@ def render_client_receipt(receipt_data):
             font-weight: 700;
             white-space: nowrap;
         }}
+        .currency-toggle {{
+            margin-top: 10px;
+            padding: 7px 10px;
+            border: 1px solid #A68B6B;
+            border-radius: 7px;
+            background: #fff;
+            color: #6e573b;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }}
         .footer {{
             text-align: center;
             margin-top: 28px;
@@ -1142,8 +1154,11 @@ def render_client_receipt(receipt_data):
 
 
         <div class="total">
-          <div class="total-label">{tr("До сплати", "Total Due")}</div>
-          <div class="total-value">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} UAH</div>
+          <div>
+            <div class="total-label">{tr("До сплати", "Total Due")}</div>
+            <button class="currency-toggle" type="button" onclick="toggleReceiptCurrency()">{tr("Показати в USD · курс 47", "Show in USD · rate 47")}</button>
+          </div>
+          <div class="total-value" id="receipt-total" data-uah="{float(receipt_data.get('selected_total', receipt_data.get('total', 0)) or 0):.2f}" data-uah-display="{money100(receipt_data.get('selected_total', receipt_data.get('total', 0)))} UAH">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} UAH</div>
         </div>
 
         <div class="footer">
@@ -1160,6 +1175,22 @@ def render_client_receipt(receipt_data):
       </div>
 
       <script>
+        let receiptShowingUsd = false;
+        function toggleReceiptCurrency() {{
+          const total = document.getElementById('receipt-total');
+          const button = document.querySelector('.currency-toggle');
+          if (!total || !button) return;
+          if (receiptShowingUsd) {{
+            total.textContent = total.dataset.uahDisplay;
+            button.textContent = {json.dumps("Показати в USD · курс 47" if not lang_en else "Show in USD · rate 47")};
+          }} else {{
+            const usd = Number(total.dataset.uah) / 47;
+            total.textContent = usd.toLocaleString('en-US', {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}) + ' USD';
+            button.textContent = {json.dumps("Показати в UAH" if not lang_en else "Show in UAH")};
+          }}
+          receiptShowingUsd = !receiptShowingUsd;
+        }}
+
         async function downloadReceipt(format) {{
           const receipt = document.getElementById('receipt-card');
           const canvas = await html2canvas(receipt, {{
