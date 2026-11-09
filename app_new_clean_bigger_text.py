@@ -956,10 +956,20 @@ def render_client_receipt(receipt_data):
             font-family: Arial, Helvetica, sans-serif;
             color: #1d1d1d;
         }}
+        .receipt-layout {{
+            width: 100%;
+            max-width: 850px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }}
         .receipt {{
             width: 100%;
             max-width: 660px;
-            margin: 0 auto;
+            min-width: 0;
+            margin: 0;
             background: #ffffff;
             border: 1px solid #deded9;
             border-radius: 18px;
@@ -1075,15 +1085,21 @@ def render_client_receipt(receipt_data):
             font-weight: 700;
             white-space: nowrap;
         }}
+        .currency-controls {{
+            flex: 0 0 150px;
+            display: flex;
+            justify-content: center;
+        }}
         .currency-toggle {{
-            margin-top: 10px;
-            padding: 7px 10px;
+            width: 100%;
+            padding: 10px 12px;
             border: 1px solid #A68B6B;
-            border-radius: 7px;
+            border-radius: 8px;
             background: #fff;
             color: #6e573b;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
+            line-height: 1.4;
             cursor: pointer;
         }}
         .footer {{
@@ -1119,14 +1135,20 @@ def render_client_receipt(receipt_data):
         .action-button.secondary {{
             background: #666;
         }}
+        @media (max-width: 760px) {{
+            .receipt-layout {{ flex-direction: column; align-items: stretch; }}
+            .currency-controls {{ flex: none; width: 100%; }}
+            .currency-toggle {{ max-width: 260px; }}
+        }}
         @media print {{
             body {{ background: white; padding: 0; }}
             .receipt {{ box-shadow: none; border: none; }}
-            .receipt-actions {{ display: none; }}
+            .receipt-actions, .currency-controls {{ display: none; }}
         }}
     </style>
     </head>
     <body>
+      <div class="receipt-layout">
       <div id="receipt-card" class="receipt">
         <div class="logo-wrap"><img class="logo-image" src="{LOGO_DATA_URL}" alt="Lana &amp; Lona Jewellery"></div>
 
@@ -1154,10 +1176,7 @@ def render_client_receipt(receipt_data):
 
 
         <div class="total">
-          <div>
-            <div class="total-label">{tr("До сплати", "Total Due")}</div>
-            <button class="currency-toggle" type="button" onclick="toggleReceiptCurrency()">{tr("Показати в USD · курс 47", "Show in USD · rate 47")}</button>
-          </div>
+          <div class="total-label">{tr("До сплати", "Total Due")}</div>
           <div class="total-value" id="receipt-total" data-uah="{float(receipt_data.get('selected_total', receipt_data.get('total', 0)) or 0):.2f}" data-uah-display="{money100(receipt_data.get('selected_total', receipt_data.get('total', 0)))} UAH">{money100(receipt_data.get("selected_total", receipt_data.get("total", 0)))} UAH</div>
         </div>
 
@@ -1166,6 +1185,10 @@ def render_client_receipt(receipt_data):
           {tr("Дякуємо, що обираєте Lana &amp; Lona.", "Thank you for choosing Lana &amp; Lona.")}
         </div>
 
+      </div>
+      <div class="currency-controls">
+        <button class="currency-toggle" type="button" onclick="toggleReceiptCurrency()">{tr("Показати суму в USD · курс 47", "Show amount in USD · rate 47")}</button>
+      </div>
       </div>
 
       <div class="receipt-actions">
@@ -1182,7 +1205,7 @@ def render_client_receipt(receipt_data):
           if (!total || !button) return;
           if (receiptShowingUsd) {{
             total.textContent = total.dataset.uahDisplay;
-            button.textContent = {json.dumps("Показати в USD · курс 47" if not lang_en else "Show in USD · rate 47")};
+            button.textContent = {json.dumps("Показати суму в USD · курс 47" if not lang_en else "Show amount in USD · rate 47")};
           }} else {{
             const usd = Number(total.dataset.uah) / 47;
             total.textContent = usd.toLocaleString('en-US', {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}) + ' USD';
