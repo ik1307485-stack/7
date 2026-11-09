@@ -1,3 +1,4 @@
+
 import html
 from datetime import datetime
 
@@ -1203,6 +1204,34 @@ def go_ring():
     st.session_state.screen = "ring"
 
 
+def set_black_friday_discount(key_prefix, amount):
+    st.session_state[f"{key_prefix}_manual_discount_enabled"] = True
+    st.session_state[f"{key_prefix}_custom_discount"] = float(amount)
+
+
+def render_black_friday_discount_buttons(key_prefix):
+    st.caption("Знижки до Чорної П'ятниці")
+    discount_buttons = st.columns(3)
+    presets = [
+        ("−3 000 каблучки", 3000),
+        ("−5 000 обручки", 5000),
+        ("−10 000 колекційні", 10000),
+    ]
+    for column, (label, amount) in zip(discount_buttons, presets):
+        with column:
+            st.button(
+                label,
+                key=f"{key_prefix}_black_friday_{amount}",
+                on_click=set_black_friday_discount,
+                args=(key_prefix, amount),
+                help={
+                    3000: "Знижка на каблучки",
+                    5000: "Знижка на обручки",
+                    10000: "Знижка на колекційні обручки",
+                }[amount],
+            )
+
+
 st.markdown("""
 <style>
 .main-title {text-align:center; font-size:34px; font-weight:700; margin-top:40px;}
@@ -1315,6 +1344,7 @@ elif st.session_state.screen == "wedding":
             custom_diamond_price_currency = "USD"
             custom_diamond_price = 0.0
         st.markdown("### Додатково")
+        render_black_friday_discount_buttons("wedding")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
             "Застосувати основну знижку 9 400 грн",
@@ -1517,6 +1547,7 @@ elif st.session_state.screen == "ring":
             custom_diamond_price_currency = "USD"
             custom_diamond_price = 0.0
         st.markdown("### Додатково")
+        render_black_friday_discount_buttons("ring")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
             "Застосувати основну знижку 9 400 грн",
@@ -1628,3 +1659,6 @@ elif st.session_state.screen == "ring":
         st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
         st.subheader("🧾 Чек для клієнта")
         render_client_receipt(st.session_state.get("receipt_data"))
+
+
+
