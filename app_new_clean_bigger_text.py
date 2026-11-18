@@ -957,7 +957,7 @@ def render_client_receipt(receipt_data):
             f'<strong>{tr("У подарунок", "Complimentary")}</strong>'
             '</div>'
         )
-    items_html += row(tr("Знижка", "Discount"), receipt_data.get("total_discount", 0), negative=True)
+    #items_html += row(tr("Знижка", "Discount"), receipt_data.get("total_discount", 0), negative=True)
     if receipt_data.get("total_benefit", 0) > 0:
         items_html += row(tr("Загальна вигода", "Total benefits"), receipt_data.get("total_benefit", 0))
 
