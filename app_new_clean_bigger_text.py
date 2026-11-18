@@ -270,6 +270,8 @@ def calculate_wedding_rings(data):
 
     manual_discount_enabled = data.get("manual_discount_enabled", False)
     custom_discount = float(data.get("custom_discount", 0) or 0) if manual_discount_enabled else 0.0
+    bonus_discount = float(data.get("bonus_discount", 0) or 0)
+    selected_bonuses = data.get("selected_bonuses", []) or []
 
     # Якщо менеджер вмикає ручну знижку — всі інші знижки анулюються.
     effective_discount_percent = 0 if manual_discount_enabled else discount_percent
@@ -347,6 +349,8 @@ def calculate_wedding_rings(data):
             result["total"] -= custom_discount
             result["product_discount"] = 0.0
 
+        result["base_total"] -= bonus_discount
+        result["total"] -= bonus_discount
         material_results[material] = result
 
         variants = {}
@@ -358,7 +362,7 @@ def calculate_wedding_rings(data):
         material_variant_totals[material] = variants
 
     primary = material_results[receipt_material]
-    total_discount = custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)
+    total_discount = (custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)) + bonus_discount
 
     if design == "Вишиванка":
         title = "Індивідуальна модель обручок «Вишиванка» ⚜️"
@@ -539,6 +543,7 @@ def calculate_wedding_rings(data):
         "product_discount": primary["product_discount"],
         "base_discount": base_discount,
         "total_discount": total_discount,
+        "selected_bonuses": selected_bonuses,
         "base_discount_enabled": False if manual_discount_enabled else base_discount_enabled,
         "manual_discount_enabled": manual_discount_enabled,
         "custom_discount": custom_discount,
@@ -601,6 +606,8 @@ def calculate_ring(data):
 
     manual_discount_enabled = data.get("manual_discount_enabled", False)
     custom_discount = float(data.get("custom_discount", 0) or 0) if manual_discount_enabled else 0.0
+    bonus_discount = float(data.get("bonus_discount", 0) or 0)
+    selected_bonuses = data.get("selected_bonuses", []) or []
 
     # Якщо менеджер вмикає ручну знижку — всі інші знижки анулюються.
     effective_discount_percent = 0 if manual_discount_enabled else discount_percent
@@ -676,6 +683,8 @@ def calculate_ring(data):
             result["total"] -= custom_discount
             result["product_discount"] = 0.0
 
+        result["base_total"] -= bonus_discount
+        result["total"] -= bonus_discount
         material_results[material] = result
 
         variants = {}
@@ -690,7 +699,7 @@ def calculate_ring(data):
         material_variant_totals[material] = variants
 
     primary = material_results[receipt_material]
-    total_discount = custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)
+    total_discount = (custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)) + bonus_discount
     inserts_text = make_inserts_text(main_size, main_qty, small_size, small_qty)
 
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
@@ -774,6 +783,7 @@ def calculate_ring(data):
         "product_discount": primary["product_discount"],
         "base_discount": base_discount,
         "total_discount": total_discount,
+        "selected_bonuses": selected_bonuses,
         "base_discount_enabled": False if manual_discount_enabled else base_discount_enabled,
         "manual_discount_enabled": manual_discount_enabled,
         "custom_discount": custom_discount,
@@ -933,6 +943,14 @@ def render_client_receipt(receipt_data):
         else tr("Каміння", "Stones")
     )
     items_html += row(stone_cost_label, receipt_data.get("stones_cost", 0))
+    for bonus in receipt_data.get("selected_bonuses", []):
+        bonus_label = bonus.get("receipt_label", bonus.get("label", "Подарунок"))
+        items_html += (
+            '<div class="receipt-row">'
+            f'<span>{safe(bonus_label)}</span>'
+            f'<strong>{tr("У подарунок", "Complimentary")}</strong>'
+            '</div>'
+        )
     items_html += row(tr("Загальна знижка", "Total discount"), receipt_data.get("total_discount", 0), negative=True)
 
     #items_html += row("Доставка", receipt_data.get("delivery", 0))
@@ -1286,6 +1304,48 @@ def render_black_friday_discount_buttons(key_prefix):
             )
 
 
+def render_gift_offer_buttons(key_prefix):
+    """Промопропозиції: вартість прихована від клієнта, сума додається до знижки."""
+    st.caption("Подарунки та додаткові пропозиції")
+    delivery_region = st.selectbox(
+        "Регіон доставки для подарункової пропозиції",
+        ["Україна", "Європа та світ"],
+        key=f"{key_prefix}_gift_delivery_region",
+    )
+    delivery_value = 1000 if delivery_region == "Україна" else 6000
+    offers = [
+        ("Авторський ювелірний подарунок ручної роботи на Ваш вибір", 17700),
+        ("Безкоштовне гравіювання", 3000),
+        ("Профіль «Комфорт» у подарунок", 4000),
+        ("Ексклюзивне відео процесу виготовлення", 0),
+        (f"Безкоштовна доставка ({delivery_region.lower()})", delivery_value),
+    ]
+    selected = []
+    cols = st.columns(2)
+    for index, (label, value) in enumerate(offers):
+        state_key = f"{key_prefix}_gift_offer_{index}"
+        if state_key not in st.session_state:
+            st.session_state[state_key] = False
+        with cols[index % 2]:
+            button_label = ("✓ " if st.session_state[state_key] else "+ ") + label
+            if st.button(
+                button_label,
+                key=f"{key_prefix}_gift_offer_button_{index}",
+                use_container_width=True,
+            ):
+                st.session_state[state_key] = not st.session_state[state_key]
+        if st.session_state[state_key]:
+            selected.append({
+                "label": label,
+                "receipt_label": label,
+                "value": value,
+            })
+    total = sum(item["value"] for item in selected)
+    if selected:
+        st.caption(f"Вартість вибраних подарунків, яка додається до загальної знижки: {money(total)} грн")
+    return selected, total
+
+
 st.markdown("""
 <style>
 .main-title {text-align:center; font-size:34px; font-weight:700; margin-top:40px;}
@@ -1399,6 +1459,7 @@ elif st.session_state.screen == "wedding":
             custom_diamond_price = 0.0
         st.markdown("### Додатково")
         render_black_friday_discount_buttons("wedding")
+        selected_bonuses, bonus_discount = render_gift_offer_buttons("wedding")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
             "Застосувати основну знижку 9 400 грн",
@@ -1485,7 +1546,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "classic_work_price": classic_work_price, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": 0.0,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": 0.0,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "bonus_discount": bonus_discount, "selected_bonuses": selected_bonuses, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
                 "diamond_name": diamond_name, "diamond_cut": diamond_cut,
@@ -1516,7 +1577,7 @@ elif st.session_state.screen == "wedding":
                 "design": design, "classic_work_price": classic_work_price, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "use_second_ring": use_second_ring,
                 "size_1": size_1, "width_1": width_1, "thickness_1": thickness_1, "manual_weight_1": manual_weight_1_right,
                 "size_2": size_2, "width_2": width_2, "thickness_2": thickness_2, "manual_weight_2": manual_weight_2_right,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "bonus_discount": bonus_discount, "selected_bonuses": selected_bonuses, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
                 "ring_stone_enabled": ring_stone_enabled, "ring_stone_ring": ring_stone_ring, "ring_stone_size": ring_stone_size, "ring_stone_qty": ring_stone_qty,
                 "selected_stone_type": selected_stone_type,
                 "diamond_name": diamond_name, "diamond_cut": diamond_cut,
@@ -1602,6 +1663,7 @@ elif st.session_state.screen == "ring":
             custom_diamond_price = 0.0
         st.markdown("### Додатково")
         render_black_friday_discount_buttons("ring")
+        selected_bonuses, bonus_discount = render_gift_offer_buttons("ring")
         discount_percent = st.selectbox("Знижка на роботу, %", [0, 7, 10, 15, 20])
         base_discount_enabled = st.checkbox(
             "Застосувати основну знижку 9 400 грн",
@@ -1686,7 +1748,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": 0.0,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "bonus_discount": bonus_discount, "selected_bonuses": selected_bonuses, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -1701,7 +1763,7 @@ elif st.session_state.screen == "ring":
                 "size": size, "width": width, "thickness": thickness, "gold_type": gold_type, "selected_materials": selected_materials, "receipt_material": receipt_material, "coating_option": coating_option, "manual_weight": manual_weight_right,
                 "main_size": main_size, "main_qty": main_qty, "small_size": small_size, "small_qty": small_qty,
                 "selected_stone_type": selected_stone_type,
-                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
+                "discount_percent": discount_percent, "base_discount_enabled": base_discount_enabled, "manual_discount_enabled": manual_discount_enabled, "custom_discount": custom_discount, "bonus_discount": bonus_discount, "selected_bonuses": selected_bonuses, "engraving": engraving, "delivery": delivery, "usd_rate": usd_rate, "custom_client_price": custom_client_price,
             })
             st.session_state.technical_text = technical_text
             st.session_state.client_text = client_text
@@ -1713,6 +1775,3 @@ elif st.session_state.screen == "ring":
         st.caption("Натисни кнопку у правому верхньому куті блоку, щоб скопіювати текст.")
         st.subheader("🧾 Чек для клієнта")
         render_client_receipt(st.session_state.get("receipt_data"))
-
-
-
