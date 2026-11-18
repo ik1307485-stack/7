@@ -349,8 +349,6 @@ def calculate_wedding_rings(data):
             result["total"] -= custom_discount
             result["product_discount"] = 0.0
 
-        result["base_total"] -= bonus_discount
-        result["total"] -= bonus_discount
         material_results[material] = result
 
         variants = {}
@@ -362,7 +360,8 @@ def calculate_wedding_rings(data):
         material_variant_totals[material] = variants
 
     primary = material_results[receipt_material]
-    total_discount = (custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)) + bonus_discount
+    total_discount = custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)
+    total_benefit = sum(float(item.get("value", 0) or 0) for item in selected_bonuses)
 
     if design == "Вишиванка":
         title = "Індивідуальна модель обручок «Вишиванка» ⚜️"
@@ -414,8 +413,11 @@ def calculate_wedding_rings(data):
 • Ручна обробка: {money(primary["work_cost"] * 0.25)} грн
 • Фінальне шліфування: {money(primary["work_cost"] * 0.15)} грн
 
-Загальна знижка:
+Знижка:
 -{money(total_discount)} грн
+
+Загальна вигода:
+{money(total_benefit)} грн
 
 Упаковка:
 {money(PACKAGING)} грн
@@ -543,6 +545,7 @@ def calculate_wedding_rings(data):
         "product_discount": primary["product_discount"],
         "base_discount": base_discount,
         "total_discount": total_discount,
+        "total_benefit": total_benefit,
         "selected_bonuses": selected_bonuses,
         "base_discount_enabled": False if manual_discount_enabled else base_discount_enabled,
         "manual_discount_enabled": manual_discount_enabled,
@@ -683,8 +686,6 @@ def calculate_ring(data):
             result["total"] -= custom_discount
             result["product_discount"] = 0.0
 
-        result["base_total"] -= bonus_discount
-        result["total"] -= bonus_discount
         material_results[material] = result
 
         variants = {}
@@ -699,7 +700,8 @@ def calculate_ring(data):
         material_variant_totals[material] = variants
 
     primary = material_results[receipt_material]
-    total_discount = (custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)) + bonus_discount
+    total_discount = custom_discount if manual_discount_enabled else (primary["product_discount"] + base_discount)
+    total_benefit = sum(float(item.get("value", 0) or 0) for item in selected_bonuses)
     inserts_text = make_inserts_text(main_size, main_qty, small_size, small_qty)
 
     technical_text = f"""Курс USD: {usd_rate:.2f} грн
@@ -731,8 +733,11 @@ def calculate_ring(data):
 • Ручна обробка: {money(primary["work_cost"] * 0.25)} грн
 • Фінальне шліфування: {money(primary["work_cost"] * 0.15)} грн
 
-Загальна знижка:
+Знижка:
 -{money(total_discount)} грн
+
+Загальна вигода:
+{money(total_benefit)} грн
 
 Упаковка:
 {money(PACKAGING)} грн
@@ -783,6 +788,7 @@ def calculate_ring(data):
         "product_discount": primary["product_discount"],
         "base_discount": base_discount,
         "total_discount": total_discount,
+        "total_benefit": total_benefit,
         "selected_bonuses": selected_bonuses,
         "base_discount_enabled": False if manual_discount_enabled else base_discount_enabled,
         "manual_discount_enabled": manual_discount_enabled,
@@ -951,7 +957,9 @@ def render_client_receipt(receipt_data):
             f'<strong>{tr("У подарунок", "Complimentary")}</strong>'
             '</div>'
         )
-    items_html += row(tr("Загальна знижка", "Total discount"), receipt_data.get("total_discount", 0), negative=True)
+    items_html += row(tr("Знижка", "Discount"), receipt_data.get("total_discount", 0), negative=True)
+    if receipt_data.get("total_benefit", 0) > 0:
+        items_html += row(tr("Загальна вигода", "Total benefits"), receipt_data.get("total_benefit", 0))
 
     #items_html += row("Доставка", receipt_data.get("delivery", 0))
 
@@ -1305,7 +1313,7 @@ def render_black_friday_discount_buttons(key_prefix):
 
 
 def render_gift_offer_buttons(key_prefix):
-    """Промопропозиції: вартість прихована від клієнта, сума додається до знижки."""
+    """Промопропозиції: вартість прихована по кожному пункту; загальна вигода не змінює суму до сплати."""
     st.caption("Подарунки та додаткові пропозиції")
     delivery_region = st.selectbox(
         "Регіон доставки для подарункової пропозиції",
@@ -1342,7 +1350,7 @@ def render_gift_offer_buttons(key_prefix):
             })
     total = sum(item["value"] for item in selected)
     if selected:
-        st.caption(f"Вартість вибраних подарунків, яка додається до загальної знижки: {money(total)} грн")
+        st.caption(f"Загальна вигода за вибраними пропозиціями (не віднімається від суми до сплати): {money(total)} грн")
     return selected, total
 
 
