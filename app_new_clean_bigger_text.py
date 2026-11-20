@@ -1307,7 +1307,6 @@ def render_black_friday_discount_buttons(key_prefix):
                 help={
                     3000: "Знижка на каблучки",
                     5000: "Знижка на обручки",
-                    10000: "Знижка на колекційні обручки",
                 }[amount],
             )
 
