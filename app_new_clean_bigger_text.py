@@ -1291,11 +1291,10 @@ def set_black_friday_discount(key_prefix, amount):
 
 def render_black_friday_discount_buttons(key_prefix):
     st.caption("Знижки до Чорної П'ятниці")
-    discount_buttons = st.columns(3)
+    discount_buttons = st.columns(2)
     presets = [
         ("−3 000 каблучки", 3000),
         ("−5 000 обручки", 5000),
-        ("−10 000 колекційні", 10000),
     ]
     for column, (label, amount) in zip(discount_buttons, presets):
         with column:
@@ -1307,7 +1306,6 @@ def render_black_friday_discount_buttons(key_prefix):
                 help={
                     3000: "Знижка на каблучки",
                     5000: "Знижка на обручки",
-                    10000: "Знижка на колекційні обручки",
                 }[amount],
             )
 
@@ -1317,7 +1315,7 @@ def render_gift_offer_buttons(key_prefix):
     st.caption("Подарунки та додаткові пропозиції")
     delivery_region = st.selectbox(
         "Регіон доставки для подарункової пропозиції",
-        ["Україна", "Європа та світ"],
+        ["Україна", "Європа/США та світ"],
         key=f"{key_prefix}_gift_delivery_region",
     )
     delivery_value = 1000 if delivery_region == "Україна" else 6000
@@ -1326,7 +1324,7 @@ def render_gift_offer_buttons(key_prefix):
         ("Безкоштовне гравіювання", 3000),
         ("Профіль «Комфорт» у подарунок", 4000),
         ("Ексклюзивне відео процесу виготовлення", 0),
-        (f"Безкоштовна доставка ({delivery_region.lower()})", delivery_value),
+        (f"Безкоштовна доставка ({delivery_region})", delivery_value),
     ]
     selected = []
     cols = st.columns(2)
